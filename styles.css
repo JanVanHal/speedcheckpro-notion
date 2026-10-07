@@ -1475,3 +1475,32 @@ a:focus-visible {
   .tools-top { padding-top: var(--nt-space-32); padding-bottom: var(--nt-space-48, 48px); }
   .hero-centered { padding: 0 0 var(--nt-space-64); }
 }
+
+/* —— Is It Down? status banner —— */
+.status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--nt-space-12);
+  margin: 0 0 var(--nt-space-24);
+  padding: var(--nt-space-16) var(--nt-space-20, 20px);
+  border: var(--nt-hairline);
+  border-radius: var(--nt-radius-card);
+  background: var(--nt-canvas);
+}
+.status-banner strong { display: block; color: var(--nt-ink); font-size: var(--nt-text-body); }
+.status-banner span#statusText { color: var(--nt-graphite); font-size: var(--nt-text-body-sm); }
+.status-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--nt-ink-40);
+}
+.status-up { background: var(--nt-blue-tint); border-color: rgba(0, 117, 222, 0.25); }
+.status-up .status-dot { background: var(--nt-blue); }
+.status-down { background: #fff1ee; border-color: rgba(246, 73, 50, 0.3); }
+.status-down .status-dot { background: var(--nt-coral); }
+.status-checking .status-dot { animation: status-pulse 1s ease-in-out infinite; }
+@keyframes status-pulse { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .status-checking .status-dot { animation: none; } }

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>Is It Down? Website Status Checker - SpeedCheckPro</title>
+  <meta name="description" content="Check if a website is down. Free website status checker: DNS lookup plus a live reachability test from your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1234567890"
+   crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="primary-menu" onclick="var h=this.closest('.site-header'),o=h.classList.toggle('nav-open');this.setAttribute('aria-expanded',o);this.setAttribute('aria-label',o?'Close menu':'Open menu')"><span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>Menu</button>
+        <ul class="nav-links" id="primary-menu">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="dns.html">DNS Checker</a></li>
+          <li><a href="ip.html">IP Address</a></li>
+          <li><a href="speed.html">Speed Test</a></li>
+          <li><a href="down.html" class="active">Is It Down?</a></li>
+          <li><a href="blog.html">Blog</a></li>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="container">
+      <div class="tool-panel">
+        <div class="tool-header">
+          <h1>Is It Down? Website Checker</h1>
+          <p>Enter a website to see whether it is up. We look up its DNS and then try to reach it directly from your browser, with the response time.</p>
+        </div>
+
+        <form id="downForm" onsubmit="checkSite(); return false;" novalidate>
+          <div class="input-group">
+            <label for="siteInput">Website:</label>
+            <input type="text" id="siteInput" placeholder="example.com" value="" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="url" aria-describedby="siteError">
+          </div>
+          <p class="field-error" id="siteError" role="alert"></p>
+          <button class="btn btn-primary btn-block" type="submit" id="checkBtn">Check Website</button>
+        </form>
+
+        <div class="loading" id="loading" aria-hidden="true">Checking…</div>
+
+        <div class="result-section" id="resultSection">
+          <div class="status-banner" id="statusBanner" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <div>
+              <strong id="statusTitle">Checking…</strong>
+              <span id="statusText"></span>
+            </div>
+          </div>
+
+          <div class="result-item">
+            <span class="result-label">Website:</span>
+            <span class="result-value" id="siteName">–</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">DNS:</span>
+            <span class="result-value" id="dnsResult">–</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Reachable:</span>
+            <span class="result-value" id="reachResult">–</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Response Time:</span>
+            <span class="result-value" id="timeResult">–</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Checked At:</span>
+            <span class="result-value" id="checkedAt">–</span>
+          </div>
+          <p class="caption tool-caption">This test runs from your own connection. It can tell that a site answers, but not whether the page shows an error. If the site is down here but DNS works, try again from another network (for example mobile data) to see whether it is down for everyone.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <a href="index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+      <ul class="footer-links">
+        <li><a href="blog.html">Blog</a></li>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="terms.html">Terms of Service</a></li>
+        <li><a href="about.html">About Us</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="dmca.html">DMCA</a></li>
+      </ul>
+      <p class="footer-copy">&copy; 2026 SpeedCheckPro. Free tools, privacy first.</p>
+    </div>
+  </footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const DNS_TIMEOUT = 6000, REACH_TIMEOUT = 10000;
+    const RESOLVERS = [
+      { name: 'Cloudflare', url: (d, t) => 'https://cloudflare-dns.com/dns-query?name=' + encodeURIComponent(d) + '&type=' + t, headers: { accept: 'application/dns-json' } },
+      { name: 'Google', url: (d, t) => 'https://dns.google/resolve?name=' + encodeURIComponent(d) + '&type=' + t, headers: {} }
+    ];
+
+    function normalizeHost(raw) {
+      let s = String(raw || '').trim().toLowerCase();
+      if (!s) throw new Error('Please enter a website, for example example.com.');
+      s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').split(/[\/?#]/)[0].replace(/^[^@]*@/, '').replace(/:\d*$/, '').replace(/\.+$/, '');
+      if (/\s/.test(s) || !s) throw new Error('"' + String(raw).trim() + '" is not a valid website address.');
+      let ascii = s;
+      try { ascii = new URL('http://' + s).hostname; } catch (e) { throw new Error('"' + String(raw).trim() + '" is not a valid website address.'); }
+      const label = '[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?';
+      if (ascii.length > 253 || !new RegExp('^(?:' + label + '\\.)+' + label + '$').test(ascii)) {
+        throw new Error('"' + String(raw).trim() + '" is not a valid website address.');
+      }
+      return ascii;
+    }
+
+    async function withTimeout(ms, fn) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), ms);
+      try { return await fn(ctrl.signal); } finally { clearTimeout(timer); }
+    }
+
+    async function dnsQuery(host, type) {
+      let lastErr;
+      for (const r of RESOLVERS) {
+        try {
+          return await withTimeout(DNS_TIMEOUT, async (signal) => {
+            const res = await fetch(r.url(host, type), { headers: r.headers, signal, cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            if (typeof data.Status !== 'number') throw new Error('Unexpected response');
+            return data;
+          });
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('DNS unavailable');
+    }
+
+    async function checkDNS(host) {
+      const [a, aaaa] = await Promise.allSettled([dnsQuery(host, 'A'), dnsQuery(host, 'AAAA')]);
+      if (a.status === 'rejected' && aaaa.status === 'rejected') return { state: 'unknown' };
+      const pick = (r, t) => r.status === 'fulfilled' ? (r.value.Answer || []).filter(x => x.type === t).map(x => x.data) : [];
+      const ips = pick(a, 1).concat(pick(aaaa, 28));
+      const nx = [a, aaaa].some(r => r.status === 'fulfilled' && r.value.Status === 3);
+      return { state: ips.length ? 'ok' : (nx ? 'nxdomain' : 'empty'), ips };
+    }
+
+    // Opaque (no-cors) request: resolves if the server sends any HTTP response, rejects on network failure or timeout.
+    async function probe(url) {
+      const t0 = performance.now();
+      try {
+        await withTimeout(REACH_TIMEOUT, (signal) => fetch(url, { mode: 'no-cors', cache: 'no-store', redirect: 'follow', signal }));
+        return { ok: true, ms: Math.round(performance.now() - t0) };
+      } catch (e) {
+        return { ok: false, timeout: e.name === 'AbortError', ms: Math.round(performance.now() - t0) };
+      }
+    }
+
+    function setStatus(kind, title, text) {
+      const b = $('statusBanner');
+      b.className = 'status-banner status-' + kind;
+      $('statusTitle').textContent = title;
+      $('statusText').textContent = text;
+    }
+
+    let seq = 0;
+    async function checkSite() {
+      const input = $('siteInput'), err = $('siteError');
+      let host;
+      try { host = normalizeHost(input.value); err.textContent = ''; input.removeAttribute('aria-invalid'); }
+      catch (e) { seq++; err.textContent = e.message; input.setAttribute('aria-invalid', 'true'); $('resultSection').classList.remove('show'); input.focus(); return; }
+      input.value = host;
+      const my = ++seq;
+      history.replaceState(null, '', '?site=' + encodeURIComponent(host));
+      $('checkBtn').disabled = true;
+      $('loading').classList.add('show');
+      $('resultSection').classList.add('show');
+      $('siteName').textContent = host;
+      ['dnsResult', 'reachResult', 'timeResult', 'checkedAt'].forEach(id => $(id).textContent = 'Checking…');
+      setStatus('checking', 'Checking ' + host + '…', '');
+
+      const dns = await checkDNS(host);
+      if (my !== seq) return;
+      if (dns.state === 'ok') $('dnsResult').textContent = 'Resolves to ' + dns.ips.slice(0, 3).join(', ') + (dns.ips.length > 3 ? ' (+' + (dns.ips.length - 3) + ' more)' : '');
+      else if (dns.state === 'nxdomain') $('dnsResult').textContent = 'Domain does not exist (NXDOMAIN)';
+      else if (dns.state === 'empty') $('dnsResult').textContent = 'No address records found';
+      else $('dnsResult').textContent = 'Could not reach the DNS services';
+
+      let res = null;
+      if (dns.state !== 'nxdomain' && dns.state !== 'empty') {
+        res = await probe('https://' + host + '/');
+        if (!res.ok && !host.startsWith('www.')) {
+          const alt = await probe('https://www.' + host + '/');
+          if (alt.ok) res = alt;
+        }
+      }
+      if (my !== seq) return;
+
+      $('checkedAt').textContent = new Date().toLocaleString();
+      if (res && res.ok) {
+        $('reachResult').textContent = 'Yes, the server answered over HTTPS';
+        $('timeResult').textContent = res.ms + ' ms';
+        setStatus('up', host + ' is up', 'It answered from your connection in ' + res.ms + ' ms.');
+      } else if (dns.state === 'nxdomain' || dns.state === 'empty') {
+        $('reachResult').textContent = 'Not tested (no address)';
+        $('timeResult').textContent = '–';
+        setStatus('down', host + ' looks down', dns.state === 'nxdomain' ? 'This domain does not exist. Check the spelling.' : 'The domain has no address records, so browsers cannot reach it.');
+      } else {
+        $('reachResult').textContent = res && res.timeout ? 'No, timed out after ' + (REACH_TIMEOUT / 1000) + ' s' : 'No, the connection failed';
+        $('timeResult').textContent = '–';
+        setStatus('down', host + ' looks down from here', dns.state === 'ok' ? 'DNS works, but the website did not answer over HTTPS from your connection.' : 'Neither DNS nor the website could be reached. Check your own connection first.');
+      }
+      $('checkBtn').disabled = false;
+      $('loading').classList.remove('show');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const p = new URLSearchParams(location.search).get('site');
+      if (p) { $('siteInput').value = p; checkSite(); }
+    });
+  </script>
+</body>
+</html>
