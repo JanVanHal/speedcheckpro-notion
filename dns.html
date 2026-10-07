@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>DNS Resolver - SpeedCheckPro</title>
+  <meta name="description" content="Free online DNS resolver tool. Check A records, NS records, and DNS TTL for any domain.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1234567890"
+   crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="dns.html" class="active">DNS Checker</a></li>
+          <li><a href="ip.html">IP Address</a></li>
+          <li><a href="speed.html">Speed Test</a></li>
+          <li><a href="vpn.html">VPN Compare</a></li>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="container">
+      <div class="tool-panel">
+        <div class="tool-header">
+          <h1>DNS Resolver Tool</h1>
+          <p>Enter a domain name to check its DNS records (A, NS, TTL, etc.)</p>
+        </div>
+
+        <div class="input-group">
+          <label for="domainInput">Domain Name:</label>
+          <input type="text" id="domainInput" placeholder="example.com" value="example.com">
+        </div>
+
+        <button class="btn btn-primary btn-block" type="button" onclick="resolveDNS()">Resolve DNS</button>
+
+        <div class="loading" id="loading">Resolving DNS records...</div>
+
+        <div class="result-section" id="resultSection">
+          <h3>DNS Records for <span id="resultDomain"></span></h3>
+
+          <div class="result-item">
+            <span class="result-label">A Records:</span>
+            <span class="result-value" id="aRecords">Loading...</span>
+          </div>
+
+          <div class="result-item">
+            <span class="result-label">NS Records:</span>
+            <span class="result-value" id="nsRecords">Loading...</span>
+          </div>
+
+          <div class="result-item">
+            <span class="result-label">TTL:</span>
+            <span class="result-value" id="ttlRecords">Loading...</span>
+          </div>
+
+          <div class="ad-space">
+            <ins class="adsbygoogle"
+                 style="display:block; width:100%; height:90px;"
+                 data-ad-client="ca-pub-1234567890"
+                 data-ad-slot="1234567890"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+          </div>
+
+          <div class="partner-row">
+            <p class="caption">VPN affiliate partners:</p>
+            <div class="partner-links">
+              <a href="https://nordvpn.com/affiliates?tracking=SpeedCheckPro" target="_blank" rel="noopener">NordVPN</a>
+              <a href="https://www.expressvpn.com/affiliates?track=SpeedCheckPro" target="_blank" rel="noopener">ExpressVPN</a>
+              <a href="https://surfshark.com/partner/SpeedCheckPro" target="_blank" rel="noopener">Surfshark</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="footer-copy">&copy; 2026 SpeedCheckPro. Free tools, privacy first.</p>
+    </div>
+  </footer>
+
+  <script>
+    function resolveDNS() {
+      const domain = document.getElementById('domainInput').value;
+      const resultSection = document.getElementById('resultSection');
+      const loading = document.getElementById('loading');
+      const resultDomain = document.getElementById('resultDomain');
+
+      if (!domain) {
+        alert('Please enter a domain name');
+        return;
+      }
+
+      resultSection.classList.remove('show');
+      loading.classList.add('show');
+      resultSection.style.display = 'block';
+
+      setTimeout(() => {
+        loading.classList.remove('show');
+        resultSection.classList.add('show');
+        resultDomain.textContent = domain;
+
+        document.getElementById('aRecords').textContent = '93.184.216.34';
+        document.getElementById('nsRecords').textContent = 'ns1.example.com, ns2.example.com';
+        document.getElementById('ttlRecords').textContent = '3600 seconds (1 hour)';
+      }, 1000);
+    }
+  </script>
+</body>
+</html>

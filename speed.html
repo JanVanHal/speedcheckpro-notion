@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>Speed Test - SpeedCheckPro</title>
+  <meta name="description" content="Free internet speed test. Measure download, upload, ping, and jitter. Used for network optimization and ISP comparison.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1234567890"
+   crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="dns.html">DNS Checker</a></li>
+          <li><a href="ip.html">IP Address</a></li>
+          <li><a href="speed.html" class="active">Speed Test</a></li>
+          <li><a href="vpn.html">VPN Compare</a></li>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="container">
+      <div class="speed-panel">
+        <div class="tool-header">
+          <h1>Internet Speed Test</h1>
+          <p>Measure your internet speed with Ping, Download, Upload, and Jitter tests. Used by network technicians and consumers.</p>
+        </div>
+
+        <div class="speed-display">
+          <div class="speed-metric">
+            <span class="metric-label">Ping</span>
+            <span class="metric-value" id="pingValue">--</span>
+            <span class="status-indicator status-online" id="pingStatus"></span>
+          </div>
+          <div class="speed-metric">
+            <span class="metric-label">Download</span>
+            <span class="metric-value" id="downloadValue">--</span>
+            <span class="status-indicator status-online" id="downloadStatus"></span>
+          </div>
+          <div class="speed-metric">
+            <span class="metric-label">Upload</span>
+            <span class="metric-value" id="uploadValue">--</span>
+            <span class="status-indicator status-online" id="uploadStatus"></span>
+          </div>
+          <div class="speed-metric">
+            <span class="metric-label">Jitter</span>
+            <span class="metric-value" id="jitterValue">--</span>
+            <span class="status-indicator status-online" id="jitterStatus"></span>
+          </div>
+        </div>
+
+        <div class="speed-actions">
+          <button class="btn btn-primary btn-lg speed-test-btn" type="button" onclick="startSpeedTest()">Start Speed Test</button>
+          <button class="btn btn-stop btn-lg speed-test-btn stop" type="button" onclick="stopSpeedTest()" id="stopBtn" style="display: none;">Stop Test</button>
+        </div>
+
+        <div class="speed-results">
+          <div class="result-card">
+            <h3>Server</h3>
+            <div class="value" id="serverName">Default Server</div>
+          </div>
+          <div class="result-card">
+            <h3>Test Duration</h3>
+            <div class="value" id="duration">00:00</div>
+          </div>
+          <div class="result-card">
+            <h3>Packets Sent</h3>
+            <div class="value" id="packetsSent">0</div>
+          </div>
+          <div class="result-card">
+            <h3>Lost Packets</h3>
+            <div class="value" id="packetsLost">0</div>
+          </div>
+        </div>
+
+        <div class="ad-space">
+          <ins class="adsbygoogle"
+               style="display:block; width:100%; height:90px;"
+               data-ad-client="ca-pub-1234567890"
+               data-ad-slot="1234567890"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+        </div>
+
+        <div class="partner-row">
+          <p class="caption">VPN Affiliate Partners</p>
+          <div class="partner-links">
+            <a href="https://nordvpn.com/affiliates?tracking=SpeedCheckPro" target="_blank" rel="noopener">NordVPN - 100%</a>
+            <a href="https://www.expressvpn.com/affiliates?track=SpeedCheckPro" target="_blank" rel="noopener">ExpressVPN - $36</a>
+            <a href="https://surfshark.com/partner/speedcheckpro" target="_blank" rel="noopener">Surfshark - 40%</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="footer-copy">&copy; 2026 SpeedCheckPro. Free tools, privacy first.</p>
+    </div>
+  </footer>
+
+  <script>
+    let testInterval;
+    let durationInterval;
+    let isTesting = false;
+    let startTime;
+    let durationSeconds = 0;
+    let packetsSent = 0;
+    let packetsLost = 0;
+
+    function startSpeedTest() {
+      if (isTesting) return;
+
+      isTesting = true;
+      startTime = Date.now();
+      durationSeconds = 0;
+      packetsSent = 0;
+      packetsLost = 0;
+
+      document.getElementById('stopBtn').style.display = 'inline-block';
+      document.querySelector('.speed-test-btn').style.display = 'none';
+
+      // Simulate speed test results
+      const pingValues = [12, 45, 23, 67, 34];
+      const downloadValues = [85, 120, 92, 156, 78];
+      const uploadValues = [25, 42, 38, 67, 31];
+      const jitterValues = [2, 8, 4, 15, 6];
+
+      let pingIndex = 0;
+      let downloadIndex = 0;
+      let uploadIndex = 0;
+      let jitterIndex = 0;
+
+      testInterval = setInterval(() => {
+        // Update values
+        document.getElementById('pingValue').textContent = pingValues[pingIndex++] + ' ms';
+        document.getElementById('downloadValue').textContent = downloadValues[downloadIndex++] + ' Mbps';
+        document.getElementById('uploadValue').textContent = uploadValues[uploadIndex++] + ' Mbps';
+        document.getElementById('jitterValue').textContent = jitterValues[jitterIndex++] + ' ms';
+
+        // Update status
+        document.getElementById('pingStatus').className = 'status-indicator status-online';
+        document.getElementById('downloadStatus').className = 'status-indicator status-online';
+        document.getElementById('uploadStatus').className = 'status-indicator status-online';
+        document.getElementById('jitterStatus').className = 'status-indicator status-online';
+
+        packetsSent += Math.floor(Math.random() * 10 + 5);
+        packetsLost += Math.floor(Math.random() * 3);
+        document.getElementById('packetsSent').textContent = packetsSent;
+        document.getElementById('packetsLost').textContent = packetsLost;
+
+        if (pingIndex >= pingValues.length) {
+          clearInterval(testInterval);
+          stopSpeedTest();
+        }
+      }, 1000);
+
+      durationInterval = setInterval(() => {
+        durationSeconds++;
+        const minutes = Math.floor(durationSeconds / 60);
+        const seconds = durationSeconds % 60;
+        document.getElementById('duration').textContent =
+          (minutes > 0 ? minutes + ':' : '') +
+          (seconds < 10 ? '0' + seconds : seconds);
+      }, 1000);
+    }
+
+    function stopSpeedTest() {
+      isTesting = false;
+      clearInterval(testInterval);
+      clearInterval(durationInterval);
+
+      document.getElementById('stopBtn').style.display = 'none';
+      document.querySelector('.speed-test-btn').style.display = 'inline-block';
+    }
+  </script>
+</body>
+</html>

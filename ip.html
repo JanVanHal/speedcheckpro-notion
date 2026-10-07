@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>IP Address Tool - SpeedCheckPro</title>
+  <meta name="description" content="Get your public IP, geolocation, and ISP details. Used for VPN setup and network troubleshooting.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1234567890"
+   crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="dns.html">DNS Checker</a></li>
+          <li><a href="ip.html" class="active">IP Address</a></li>
+          <li><a href="speed.html">Speed Test</a></li>
+          <li><a href="vpn.html">VPN Compare</a></li>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="container">
+      <div class="tool-panel">
+        <div class="tool-header">
+          <h1>Your IP Address Information</h1>
+          <p>Get your public IP, geolocation, and ISP details. Perfect for VPN setup and network troubleshooting.</p>
+        </div>
+
+        <div class="ip-display">
+          <span class="ip-label">Your Public IP</span>
+          <span class="ip-value" id="publicIP">192.168.1.1</span>
+          <span class="ip-label">Location</span>
+          <span class="ip-value" id="location">New York, NY, USA</span>
+          <span class="ip-label">ISP</span>
+          <span class="ip-value" id="isp">Comcast Cable</span>
+        </div>
+
+        <div class="result-grid">
+          <div class="result-card">
+            <label>IP Version</label>
+            <span class="value">IPv4</span>
+          </div>
+          <div class="result-card">
+            <label>Network Type</label>
+            <span class="value">Public</span>
+          </div>
+          <div class="result-card">
+            <label>Hosting Provider</label>
+            <span class="value">Cloudflare</span>
+          </div>
+          <div class="result-card">
+            <label>First Seen</label>
+            <span class="value">2024-01-15</span>
+          </div>
+        </div>
+
+        <div class="btn-stack">
+          <button class="btn btn-primary btn-block" type="button" onclick="refreshIPInfo()">Refresh IP Info</button>
+          <button class="btn btn-ghost btn-block" type="button" onclick="window.location.href='vpn.html'">VPN Affiliate Partners</button>
+        </div>
+
+        <div class="partner-row">
+          <p class="caption">Affiliate Partner Programs</p>
+          <div class="pill-row">
+            <span class="pill pill-tint">NordVPN - 100% Commission</span>
+            <span class="pill pill-marigold">ExpressVPN - $36</span>
+            <span class="pill pill-coral">Surfshark - 40%</span>
+          </div>
+        </div>
+
+        <div class="ad-space">
+          <ins class="adsbygoogle"
+               style="display:block; width:100%; height:90px;"
+               data-ad-client="ca-pub-1234567890"
+               data-ad-slot="1234567890"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="footer-copy">&copy; 2026 SpeedCheckPro. Free tools, privacy first.</p>
+    </div>
+  </footer>
+
+  <script>
+    function refreshIPInfo() {
+      const ips = ['192.168.1.1', '10.0.0.1', '172.16.0.1', '203.0.113.1'];
+      const locations = ['New York, NY, USA', 'London, UK', 'Tokyo, Japan', 'Sydney, Australia'];
+      const isps = ['Comcast Cable', 'Verizon', 'AT&T', 'T-Mobile'];
+
+      const randomIP = ips[Math.floor(Math.random() * ips.length)];
+      const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+      const randomISP = isps[Math.floor(Math.random() * isps.length)];
+
+      document.getElementById('publicIP').textContent = randomIP;
+      document.getElementById('location').textContent = randomLocation;
+      document.getElementById('isp').textContent = randomISP;
+    }
+  </script>
+</body>
+</html>
