@@ -1465,3 +1465,13 @@ a:focus-visible {
 @media (max-width: 768px) {
   .speed-display { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* —— Homepage: tool cards first, centered banner below —— */
+.tools-top { padding-top: var(--nt-space-64); padding-bottom: var(--nt-space-64); }
+.hero-centered { padding: 0 0 var(--nt-space-80); text-align: center; }
+.hero-centered .hero-inner { margin: 0 auto; }
+.hero-centered .lede { margin-left: auto; margin-right: auto; }
+@media (max-width: 768px) {
+  .tools-top { padding-top: var(--nt-space-32); padding-bottom: var(--nt-space-48, 48px); }
+  .hero-centered { padding: 0 0 var(--nt-space-64); }
+}
