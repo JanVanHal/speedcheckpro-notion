@@ -38,11 +38,20 @@
       <div class="tool-panel">
         <div class="tool-header">
           <h1>Your IP Address Information</h1>
-          <p>Get your public IP, geolocation, and ISP details. Perfect for VPN setup and network troubleshooting.</p>
+          <p>Get your public IP, geolocation, and ISP details, or look up any other IP. Perfect for VPN setup and network troubleshooting.</p>
         </div>
 
+        <form id="ipForm" class="ip-form" onsubmit="lookupFromInput(); return false;" novalidate>
+          <div class="input-group">
+            <label for="ipInput">Look up any IP:</label>
+            <input type="text" id="ipInput" placeholder="8.8.8.8 or 2001:4860:4860::8888" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" aria-describedby="ipError">
+          </div>
+          <p class="field-error" id="ipError" role="alert"></p>
+          <button class="btn btn-primary btn-block" type="submit" id="lookupBtn">Look up</button>
+        </form>
+
         <div class="ip-display">
-          <span class="ip-label">Your Public IP</span>
+          <span class="ip-label" id="ipLabel">Your Public IP</span>
           <span class="ip-value" id="publicIP">Loading…</span>
           <span class="ip-label">Location</span>
           <span class="ip-value" id="location">Loading…</span>
@@ -68,10 +77,16 @@
             <span class="value" id="org">–</span>
           </div>
         </div>
+
+        <figure class="ip-map" id="ipMap" hidden>
+          <iframe id="ipMapFrame" title="Map of the approximate location" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <figcaption>Approximate location (usually the city or your provider&rsquo;s hub, not your street). <a id="ipMapLink" href="https://www.openstreetmap.org/" target="_blank" rel="noopener">View larger map</a> &middot; &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</figcaption>
+        </figure>
+
         <p class="caption" id="ipStatus" aria-live="polite"></p>
 
         <div class="btn-stack">
-          <button class="btn btn-primary btn-block" type="button" onclick="refreshIPInfo()">Refresh IP Info</button>
+          <button class="btn btn-ghost btn-block" type="button" id="myIpBtn" onclick="showMyIP()">Show my IP</button>
         </div>
 
         <div class="ad-space">
@@ -82,6 +97,15 @@
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
         </div>
+      </div>
+
+      <div class="tool-panel recent-panel" id="recentPanel" hidden>
+        <div class="recent-head">
+          <h2>Recent lookups</h2>
+          <button type="button" class="recent-clear" id="recentClear">Clear</button>
+        </div>
+        <ul class="recent-list" id="recentList"></ul>
+        <p class="caption tool-caption">Your last ten IPs, saved only in this browser. Tap one to look it up again.</p>
       </div>
     </div>
   </main>
@@ -104,6 +128,7 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const setText = (id, v) => { $(id).textContent = (v === undefined || v === null || v === '') ? '–' : v; };
+    const RECENT_KEY = 'scp-ip-recent', RECENT_MAX = 10;
 
     async function getJSON(url) {
       const ctrl = new AbortController();
@@ -115,59 +140,272 @@
       } finally { clearTimeout(t); }
     }
 
-    // Primary: ipwho.is. Fallback: ipapi.co. Last resort: ipify (IP only).
-    async function lookup() {
+    // —— Validation ——
+    const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+    function normalizeIP(raw) {
+      let s = String(raw || '').trim().replace(/^\[|\]$/g, '');
+      if (!s) throw new Error('Enter an IP address, for example 8.8.8.8.');
+      if (IPV4.test(s)) return { ip: s, v: 4 };
+      if (s.includes(':') && /^[0-9a-fA-F:.]+$/.test(s)) {
+        try { // the URL parser validates and compresses IPv6
+          const h = new URL('http://[' + s + ']/').hostname.slice(1, -1);
+          const m = h.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/); // IPv4-mapped → plain IPv4
+          if (m) { const x = parseInt(m[1], 16), y = parseInt(m[2], 16); return { ip: [x >> 8, x & 255, y >> 8, y & 255].join('.'), v: 4 }; }
+          return { ip: h, v: 6 };
+        } catch (e) { /* fall through */ }
+      }
+      throw new Error('That doesn\u2019t look like a valid IPv4 or IPv6 address.');
+    }
+
+    // Private, reserved and other non-public ranges have no public location.
+    function specialRange(ip, v) {
+      if (v === 4) {
+        const [a, b, c] = ip.split('.').map(Number);
+        if (a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)) return 'a private address, used inside home and office networks';
+        if (a === 100 && b >= 64 && b <= 127) return 'a shared address used inside a provider\u2019s network (carrier-grade NAT)';
+        if (a === 127) return 'a loopback address, meaning this device itself';
+        if (a === 169 && b === 254) return 'a link-local address, used when a device gets no address from the network';
+        if (a >= 224 && a <= 239) return 'a multicast address';
+        if (a === 0 || a >= 240 || (a === 192 && b === 0 && (c === 0 || c === 2)) || (a === 198 && (b === 18 || b === 19)) || (a === 198 && b === 51 && c === 100) || (a === 203 && b === 0 && c === 113)) return 'a reserved address that is not used on the public internet';
+        return '';
+      }
+      const first = parseInt(ip.split(':')[0] || '0', 16);
+      if (ip === '::1') return 'a loopback address, meaning this device itself';
+      if ((first & 0xfe00) === 0xfc00) return 'a private address (unique local), used inside a network';
+      if ((first & 0xffc0) === 0xfe80) return 'a link-local address, only valid on the local network';
+      if ((first & 0xff00) === 0xff00) return 'a multicast address';
+      if (/^2001:db8(:|$)/i.test(ip) || first < 0x2000 || first > 0x3fff) return 'a reserved address that is not used on the public internet';
+      return '';
+    }
+
+    // —— Lookups ——
+    const num = (x) => { const n = typeof x === 'string' ? parseFloat(x) : x; return Number.isFinite(n) ? n : null; };
+    function fromIpwho(d) {
+      return {
+        ip: d.ip, type: d.type, city: d.city, country: d.country,
+        location: [d.city, d.region, d.country].filter(Boolean).join(', '),
+        isp: d.connection && d.connection.isp,
+        org: d.connection && (d.connection.org || d.connection.isp),
+        asn: d.connection && d.connection.asn ? 'AS' + d.connection.asn : '',
+        tz: d.timezone && d.timezone.id, lat: num(d.latitude), lon: num(d.longitude),
+        source: 'ipwho.is'
+      };
+    }
+    function fromIpapi(d) {
+      return {
+        ip: d.ip, type: d.version, city: d.city, country: d.country_name,
+        location: [d.city, d.region, d.country_name].filter(Boolean).join(', '),
+        isp: d.org, org: d.org, asn: d.asn, tz: d.timezone, lat: num(d.latitude), lon: num(d.longitude),
+        source: 'ipapi.co'
+      };
+    }
+    class Reserved extends Error {}
+
+    // Primary: ipwho.is. Fallback: ipapi.co. Own IP only: ipify as a last resort (IP only, no map).
+    async function lookup(ip) {
+      const path = ip ? encodeURIComponent(ip) : '';
       try {
-        const d = await getJSON('https://ipwho.is/');
-        if (d.success === false) throw new Error(d.message || 'lookup failed');
-        return {
-          ip: d.ip, type: d.type,
-          location: [d.city, d.region, d.country].filter(Boolean).join(', '),
-          isp: d.connection && d.connection.isp,
-          org: d.connection && (d.connection.org || d.connection.isp),
-          asn: d.connection && d.connection.asn ? 'AS' + d.connection.asn : '',
-          tz: d.timezone && d.timezone.id,
-          source: 'ipwho.is'
-        };
+        const d = await getJSON('https://ipwho.is/' + path);
+        if (d.success === false) {
+          if (ip && /reserved|private|bogon/i.test(d.message || '')) throw new Reserved(d.message);
+          throw new Error(d.message || 'lookup failed');
+        }
+        return fromIpwho(d);
       } catch (e1) {
+        if (e1 instanceof Reserved) throw e1;
         try {
-          const d = await getJSON('https://ipapi.co/json/');
-          if (d.error) throw new Error(d.reason || 'lookup failed');
-          return {
-            ip: d.ip, type: d.version,
-            location: [d.city, d.region, d.country_name].filter(Boolean).join(', '),
-            isp: d.org, org: d.org, asn: d.asn, tz: d.timezone,
-            source: 'ipapi.co'
-          };
+          const d = await getJSON('https://ipapi.co/' + (path ? path + '/' : '') + 'json/');
+          if (d.error) {
+            if (ip && (d.reserved || /reserved|private|bogon/i.test(d.reason || ''))) throw new Reserved(d.reason);
+            throw new Error(d.reason || 'lookup failed');
+          }
+          return fromIpapi(d);
         } catch (e2) {
+          if (ip || e2 instanceof Reserved) throw e2;
           const d = await getJSON('https://api64.ipify.org?format=json');
           return { ip: d.ip, type: d.ip.includes(':') ? 'IPv6' : 'IPv4', source: 'ipify (IP only)' };
         }
       }
     }
 
-    async function refreshIPInfo() {
-      ['publicIP', 'location', 'isp'].forEach(id => $(id).textContent = 'Loading…');
-      ['ipVersion', 'timezone', 'asn', 'org'].forEach(id => $(id).textContent = '–');
-      setText('ipStatus', 'Looking up your connection…');
-      try {
-        const info = await lookup();
-        setText('publicIP', info.ip);
-        setText('location', info.location);
-        setText('isp', info.isp);
-        setText('ipVersion', info.type);
-        setText('timezone', info.tz);
-        setText('asn', info.asn);
-        setText('org', info.org);
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        setText('ipStatus', 'Live data from ' + info.source + ' · checked ' + now + '. Location is approximate.');
-      } catch (err) {
-        ['publicIP', 'location', 'isp'].forEach(id => $(id).textContent = 'Unavailable');
-        setText('ipStatus', 'Could not reach the IP lookup service. Check your connection or ad blocker and try Refresh.');
-      }
+    // —— Map ——
+    function showMap(lat, lon) {
+      const fig = $('ipMap');
+      if (lat === null || lon === null || lat === undefined || lon === undefined || (lat === 0 && lon === 0)) { fig.hidden = true; return; }
+      const d = 0.15, f = (n) => n.toFixed(4);
+      const clampLat = (n) => Math.max(-85, Math.min(85, n)), clampLon = (n) => Math.max(-180, Math.min(180, n));
+      const bbox = [clampLon(lon - d), clampLat(lat - d), clampLon(lon + d), clampLat(lat + d)].map(f).join(',');
+      const src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox + '&layer=mapnik&marker=' + f(lat) + ',' + f(lon);
+      const frame = $('ipMapFrame');
+      if (frame.getAttribute('src') !== src) frame.setAttribute('src', src);
+      $('ipMapLink').href = 'https://www.openstreetmap.org/?mlat=' + f(lat) + '&mlon=' + f(lon) + '#map=11/' + f(lat) + '/' + f(lon);
+      fig.hidden = false;
     }
 
-    document.addEventListener('DOMContentLoaded', refreshIPInfo);
+    // —— Recent lookups ——
+    function loadRecent() {
+      try { const a = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(a) ? a.filter(r => r && typeof r.ip === 'string') : []; } catch (e) { return []; }
+    }
+    function saveRecent(info, own) {
+      let list = loadRecent();
+      const prev = list.find(r => r.ip === info.ip);
+      list = list.filter(r => r.ip !== info.ip);
+      if (own) list.forEach(r => { r.own = false; }); // only the latest detected own IP is marked "You"
+      list.unshift({
+        ip: info.ip, own: !!own || !!(prev && prev.own),
+        place: [info.city, info.country].filter(Boolean).join(', '),
+        isp: info.isp || '', t: Date.now()
+      });
+      try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX))); } catch (e) {}
+      renderRecent();
+    }
+    function timeAgo(t) {
+      const m = Math.round((Date.now() - t) / 60000);
+      if (m < 1) return 'just now';
+      if (m < 60) return m + ' min ago';
+      const h = Math.round(m / 60);
+      if (h < 24) return h + ' h ago';
+      const days = Math.round(h / 24);
+      return days < 7 ? days + ' d ago' : new Date(t).toLocaleDateString();
+    }
+    function renderRecent() {
+      const list = loadRecent(), ul = $('recentList');
+      $('recentPanel').hidden = list.length === 0;
+      ul.textContent = '';
+      list.forEach(r => {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'recent-item';
+        b.setAttribute('aria-label', 'Look up ' + r.ip + ' again');
+        const host = document.createElement('span');
+        host.className = 'recent-host';
+        const ipEl = document.createElement('span');
+        ipEl.className = 'ip-recent-ip';
+        ipEl.textContent = r.ip;
+        host.appendChild(ipEl);
+        if (r.own) {
+          const pill = document.createElement('span');
+          pill.className = 'pill pill-tint ip-you';
+          pill.textContent = 'You';
+          host.appendChild(pill);
+        }
+        const sub = [r.place, r.isp].filter(Boolean).join(' \u00b7 ');
+        if (sub) {
+          const subEl = document.createElement('span');
+          subEl.className = 'ip-recent-sub';
+          subEl.textContent = sub;
+          subEl.title = sub;
+          host.appendChild(subEl);
+        }
+        const meta = document.createElement('span');
+        meta.className = 'recent-meta';
+        meta.textContent = timeAgo(r.t);
+        b.append(host, meta);
+        b.addEventListener('click', () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          if (r.own) { $('ipInput').value = ''; showMyIP(); }
+          else { $('ipInput').value = r.ip; lookupFromInput(); }
+        });
+        li.appendChild(b);
+        ul.appendChild(li);
+      });
+    }
+
+    // —— Rendering ——
+    let seq = 0;
+    function resetFields(label) {
+      $('ipLabel').textContent = label;
+      ['publicIP', 'location', 'isp'].forEach(id => $(id).textContent = 'Loading…');
+      ['ipVersion', 'timezone', 'asn', 'org'].forEach(id => $(id).textContent = '–');
+      $('ipMap').hidden = true;
+    }
+    function fill(info) {
+      setText('publicIP', info.ip);
+      setText('location', info.location);
+      setText('isp', info.isp);
+      setText('ipVersion', info.type);
+      setText('timezone', info.tz);
+      setText('asn', info.asn);
+      setText('org', info.org);
+      showMap(info.lat, info.lon);
+    }
+    function busy(on) { $('lookupBtn').disabled = on; $('myIpBtn').disabled = on; }
+    const nowTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    async function showMyIP() {
+      const my = ++seq;
+      $('ipError').textContent = ''; $('ipInput').removeAttribute('aria-invalid');
+      history.replaceState(null, '', location.pathname);
+      resetFields('Your Public IP');
+      setText('ipStatus', 'Looking up your connection…');
+      busy(true);
+      try {
+        const info = await lookup();
+        if (my !== seq) return;
+        fill(info);
+        saveRecent(info, true);
+        setText('ipStatus', 'Live data from ' + info.source + ' · checked ' + nowTime() + '. Location is approximate.');
+      } catch (err) {
+        if (my !== seq) return;
+        ['publicIP', 'location', 'isp'].forEach(id => $(id).textContent = 'Unavailable');
+        setText('ipStatus', 'Could not reach the IP lookup service. Check your connection or ad blocker and try again.');
+      } finally { if (my === seq) busy(false); }
+    }
+    // Kept for any old links or bookmarks that call it.
+    const refreshIPInfo = showMyIP;
+
+    async function lookupFromInput() {
+      const input = $('ipInput'), errEl = $('ipError');
+      let parsed;
+      try { parsed = normalizeIP(input.value); errEl.textContent = ''; input.removeAttribute('aria-invalid'); }
+      catch (e) { errEl.textContent = e.message; input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+      const { ip, v } = parsed;
+      input.value = ip;
+      const my = ++seq;
+      history.replaceState(null, '', '?ip=' + encodeURIComponent(ip));
+      resetFields('Looked-up IP');
+      const special = specialRange(ip, v);
+      if (special) {
+        setText('publicIP', ip);
+        ['location', 'isp'].forEach(id => $(id).textContent = 'Not public');
+        setText('ipVersion', 'IPv' + v);
+        setText('ipStatus', ip + ' is ' + special + ', so it has no public location or provider to look up.');
+        return;
+      }
+      setText('ipStatus', 'Looking up ' + ip + '…');
+      busy(true);
+      try {
+        const info = await lookup(ip);
+        if (my !== seq) return;
+        info.ip = info.ip || ip;
+        fill(info);
+        saveRecent(info, false);
+        setText('ipStatus', 'Live data from ' + info.source + ' · checked ' + nowTime() + '. Location is approximate.');
+      } catch (err) {
+        if (my !== seq) return;
+        setText('publicIP', ip);
+        if (err instanceof Reserved) {
+          ['location', 'isp'].forEach(id => $(id).textContent = 'Not public');
+          setText('ipStatus', ip + ' is in a reserved or private range, so it has no public location or provider to look up.');
+        } else {
+          ['location', 'isp'].forEach(id => $(id).textContent = 'Unavailable');
+          setText('ipStatus', 'Could not look up ' + ip + ' right now (' + (err && err.message || 'network error') + '). Check your connection or ad blocker and try again.');
+        }
+      } finally { if (my === seq) busy(false); }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderRecent();
+      $('recentClear').addEventListener('click', () => {
+        if (!confirm('Clear your recent lookups?')) return;
+        try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+        renderRecent();
+      });
+      const p = new URLSearchParams(location.search).get('ip');
+      if (p) { $('ipInput').value = p; lookupFromInput(); }
+      else showMyIP();
+    });
   </script>
 </body>
 </html>

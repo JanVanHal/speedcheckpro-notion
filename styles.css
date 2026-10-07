@@ -1542,3 +1542,15 @@ a:focus-visible {
   .recent-table .rt-server { grid-row: 1; grid-column: 3 / 5; text-align: right; }
   .recent-table .rt-num::before { content: attr(data-label); display: block; font-size: 11px; color: var(--nt-ink-60); }
 }
+
+/* IP page: lookup, map, recent lookups */
+.ip-form { margin-bottom: var(--nt-space-24); }
+.ip-display .ip-value { overflow-wrap: anywhere; }
+.ip-map { margin: 0 0 var(--nt-space-16); }
+.ip-map[hidden] { display: none; }
+.ip-map iframe { display: block; width: 100%; height: 260px; border: var(--nt-hairline); border-radius: var(--nt-radius-card); background: var(--nt-canvas); }
+.ip-map figcaption { margin-top: var(--nt-space-8); color: var(--nt-ink-60); font-size: var(--nt-text-caption); letter-spacing: var(--nt-tracking-caption); }
+.ip-recent-ip { overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--nt-text-body-sm); }
+.ip-you { margin-left: 6px; padding: 1px 8px; font-size: 11px; vertical-align: 1px; }
+.ip-recent-sub { display: block; margin-top: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--nt-text-caption); font-weight: var(--nt-weight-regular); color: var(--nt-ink-60); }
+@media (max-width: 560px) { .ip-map iframe { height: 220px; } }
