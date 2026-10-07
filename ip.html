@@ -41,31 +41,32 @@
 
         <div class="ip-display">
           <span class="ip-label">Your Public IP</span>
-          <span class="ip-value" id="publicIP">192.168.1.1</span>
+          <span class="ip-value" id="publicIP">Loading…</span>
           <span class="ip-label">Location</span>
-          <span class="ip-value" id="location">New York, NY, USA</span>
+          <span class="ip-value" id="location">Loading…</span>
           <span class="ip-label">ISP</span>
-          <span class="ip-value" id="isp">Comcast Cable</span>
+          <span class="ip-value" id="isp">Loading…</span>
         </div>
 
         <div class="result-grid">
           <div class="result-card">
             <label>IP Version</label>
-            <span class="value">IPv4</span>
+            <span class="value" id="ipVersion">–</span>
           </div>
           <div class="result-card">
-            <label>Network Type</label>
-            <span class="value">Public</span>
+            <label>Timezone</label>
+            <span class="value" id="timezone">–</span>
           </div>
           <div class="result-card">
-            <label>Hosting Provider</label>
-            <span class="value">Cloudflare</span>
+            <label>ASN</label>
+            <span class="value" id="asn">–</span>
           </div>
           <div class="result-card">
-            <label>First Seen</label>
-            <span class="value">2024-01-15</span>
+            <label>Organization</label>
+            <span class="value" id="org">–</span>
           </div>
         </div>
+        <p class="caption" id="ipStatus" aria-live="polite"></p>
 
         <div class="btn-stack">
           <button class="btn btn-primary btn-block" type="button" onclick="refreshIPInfo()">Refresh IP Info</button>
@@ -100,19 +101,72 @@
   </footer>
 
   <script>
-    function refreshIPInfo() {
-      const ips = ['192.168.1.1', '10.0.0.1', '172.16.0.1', '203.0.113.1'];
-      const locations = ['New York, NY, USA', 'London, UK', 'Tokyo, Japan', 'Sydney, Australia'];
-      const isps = ['Comcast Cable', 'Verizon', 'AT&T', 'T-Mobile'];
+    const $ = (id) => document.getElementById(id);
+    const setText = (id, v) => { $(id).textContent = (v === undefined || v === null || v === '') ? '–' : v; };
 
-      const randomIP = ips[Math.floor(Math.random() * ips.length)];
-      const randomLocation = locations[Math.floor(Math.random() * locations.length)];
-      const randomISP = isps[Math.floor(Math.random() * isps.length)];
-
-      document.getElementById('publicIP').textContent = randomIP;
-      document.getElementById('location').textContent = randomLocation;
-      document.getElementById('isp').textContent = randomISP;
+    async function getJSON(url) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 8000);
+      try {
+        const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return await r.json();
+      } finally { clearTimeout(t); }
     }
+
+    // Primary: ipwho.is. Fallback: ipapi.co. Last resort: ipify (IP only).
+    async function lookup() {
+      try {
+        const d = await getJSON('https://ipwho.is/');
+        if (d.success === false) throw new Error(d.message || 'lookup failed');
+        return {
+          ip: d.ip, type: d.type,
+          location: [d.city, d.region, d.country].filter(Boolean).join(', '),
+          isp: d.connection && d.connection.isp,
+          org: d.connection && (d.connection.org || d.connection.isp),
+          asn: d.connection && d.connection.asn ? 'AS' + d.connection.asn : '',
+          tz: d.timezone && d.timezone.id,
+          source: 'ipwho.is'
+        };
+      } catch (e1) {
+        try {
+          const d = await getJSON('https://ipapi.co/json/');
+          if (d.error) throw new Error(d.reason || 'lookup failed');
+          return {
+            ip: d.ip, type: d.version,
+            location: [d.city, d.region, d.country_name].filter(Boolean).join(', '),
+            isp: d.org, org: d.org, asn: d.asn, tz: d.timezone,
+            source: 'ipapi.co'
+          };
+        } catch (e2) {
+          const d = await getJSON('https://api64.ipify.org?format=json');
+          return { ip: d.ip, type: d.ip.includes(':') ? 'IPv6' : 'IPv4', source: 'ipify (IP only)' };
+        }
+      }
+    }
+
+    async function refreshIPInfo() {
+      ['publicIP', 'location', 'isp'].forEach(id => $(id).textContent = 'Loading…');
+      ['ipVersion', 'timezone', 'asn', 'org'].forEach(id => $(id).textContent = '–');
+      setText('ipStatus', 'Looking up your connection…');
+      try {
+        const info = await lookup();
+        setText('publicIP', info.ip);
+        setText('location', info.location);
+        setText('isp', info.isp);
+        setText('ipVersion', info.type);
+        setText('timezone', info.tz);
+        setText('asn', info.asn);
+        setText('org', info.org);
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setText('ipStatus', 'Live data from ' + info.source + ' · checked ' + now + '. Location is approximate.');
+      } catch (err) {
+        ['publicIP', 'location', 'isp'].forEach(id => $(id).textContent = 'Unavailable');
+        setText('ipStatus', 'Could not reach the IP lookup service. Check your connection or ad blocker and try Refresh.');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', refreshIPInfo);
   </script>
 </body>
 </html>
