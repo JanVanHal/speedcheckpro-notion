@@ -81,7 +81,7 @@
             <span class="result-label">Checked At:</span>
             <span class="result-value" id="checkedAt">–</span>
           </div>
-          <p class="caption tool-caption">This test runs from your own connection. It can tell that a site answers, but not whether the page shows an error. If the site is down here but DNS works, try again from another network (for example mobile data) to see whether it is down for everyone.</p>
+          <p class="caption tool-caption">We check the site from our own server, so the result shows whether it is up for everyone, not just for you. If our server cannot be reached, the page falls back to a check from your own connection.</p>
         </div>
       </div>
       <div class="tool-panel recent-panel" id="recentPanel" hidden>
@@ -176,7 +176,7 @@
 
 
     // Optional server-side check (Cloudflare Worker). Leave empty to use the browser-only check.
-    const CHECK_API = '';
+    const CHECK_API = 'https://speedcheck-isitdown.jantjehal.workers.dev/';
     async function serverCheck(host) {
       if (!CHECK_API) return null;
       try {
@@ -293,7 +293,9 @@
         $('reachResult').textContent = 'Yes, HTTP ' + srv.status + ' from our server check';
         $('timeResult').textContent = srv.ms + ' ms';
         saveRecent(host, 'up', srv.ms);
-        setStatus('up', host + ' is up', 'Our server reached it in ' + srv.ms + ' ms (HTTP ' + srv.status + ').');
+        setStatus('up', host + ' is up', [401, 403, 429].includes(srv.status)
+          ? 'It answered in ' + srv.ms + ' ms but turned away our automated check (HTTP ' + srv.status + '), which is normal for big sites. Real visitors get through.'
+          : 'Our server reached it in ' + srv.ms + ' ms (HTTP ' + srv.status + ').');
       } else if (srv && srv.reached) {
         $('reachResult').textContent = 'Server error, HTTP ' + srv.status;
         $('timeResult').textContent = srv.ms + ' ms';
