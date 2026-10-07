@@ -88,7 +88,7 @@
           </div>
         </div>
 
-        <p class="caption tool-caption" id="speedStatus" aria-live="polite">Measured via speed.cloudflare.com. The test takes up to 25 seconds and transfers up to about 90 MB on fast connections.</p>
+        <p class="caption tool-caption" id="speedStatus" aria-live="polite">Measured via speed.cloudflare.com. The test takes about 25 seconds (40 at most). Download and upload run about 10 seconds each, so on fast connections it can use up to about 1.5 GB; mind your mobile data.</p>
 
         <div class="ad-space">
           <ins class="adsbygoogle"
@@ -98,6 +98,20 @@
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
         </div>
+      </div>
+
+      <div class="tool-panel recent-panel" id="recentPanel" hidden>
+        <div class="recent-head">
+          <h2>Recent tests</h2>
+          <button type="button" class="recent-clear" id="recentClear">Clear</button>
+        </div>
+        <table class="recent-table">
+          <thead>
+            <tr><th scope="col">When</th><th scope="col">Download</th><th scope="col">Upload</th><th scope="col">Ping</th><th scope="col">Jitter</th><th scope="col">Server</th></tr>
+          </thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+        <p class="caption tool-caption">Your last ten completed tests, newest first, saved only in this browser.</p>
       </div>
     </div>
   </main>
@@ -121,11 +135,13 @@
     // Real browser speed test against Cloudflare's public, CORS-enabled speed test endpoints.
     const $ = (id) => document.getElementById(id);
     const BASE = 'https://speed.cloudflare.com';
-    const LIMITS = { total: 25000, latency: 4000, download: 9000, upload: 9000, request: 8000 };
+    const LIMITS = { total: 40000, latency: 4000, request: 8000 };
     const PING_SAMPLES = 10;
-    const DOWN_PLAN = [{ bytes: 1e6, streams: 1 }, { bytes: 10e6, streams: 2 }, { bytes: 25e6, streams: 2 }];
-    const UP_PLAN = [1e6, 5e6, 10e6];
-    const TARGET_SECONDS = 2.5; // keep each step short on slow links
+    const PHASE_MS = 10000;     // download and upload each run for about 10 s
+    const WARMUP_MS = 2000;     // left out of the result (TCP slow start)
+    const SAMPLE_MS = 250;      // how often total bytes are sampled
+    const CHUNK_SECONDS = 1.5;  // target duration of each chunk request per stream
+    const RECENT_KEY = 'scp-speed-recent', RECENT_MAX = 10;
 
     let testCtrl = null;
     let isTesting = false;
@@ -136,6 +152,7 @@
     let requestsFailed = 0;
     let bytesMoved = 0;
     let reqSeq = 0;
+    const lastPhase = {};
 
     const fmtMbps = (v) => v >= 1000 ? (v / 1000).toFixed(2) + ' Gbps' : (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)) + ' Mbps';
     const fmtMs = (v) => (v >= 10 ? Math.round(v) : v.toFixed(1)) + ' ms';
@@ -156,7 +173,7 @@
       const onAbort = () => ctrl.abort(testCtrl.signal.reason);
       if (testCtrl.signal.aborted) onAbort();
       else testCtrl.signal.addEventListener('abort', onAbort, { once: true });
-      return { signal: ctrl.signal, done: () => { clearTimeout(timer); testCtrl.signal.removeEventListener('abort', onAbort); } };
+      return { signal: ctrl.signal, abort: () => ctrl.abort(new DOMException('Phase ended', 'TimeoutError')), done: () => { clearTimeout(timer); testCtrl.signal.removeEventListener('abort', onAbort); } };
     }
     const url = (path) => BASE + path + (path.includes('?') ? '&' : '?') + 'r=' + (++reqSeq) + '-' + Date.now();
     const stopped = () => testCtrl.signal.aborted;
@@ -212,111 +229,125 @@
       return { ping, jitter, samples: samples.length };
     }
 
-    async function downloadOne(bytes, signal, onBytes) {
-      requestsSent++; counters();
-      try {
-        const res = await fetch(url('/__down?bytes=' + bytes), { cache: 'no-store', signal });
-        if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
-        const reader = res.body.getReader();
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          onBytes(value.byteLength);
+    // Duration-based throughput: several parallel streams keep requesting chunks sized to ~1.5 s each
+    // until the phase time runs out. Total bytes are sampled every 250 ms; the first 2 s (warm-up and
+    // TCP slow start) are left out and the result is the average rate over the rest of the window.
+    function chunkSize(rateBps, cfg) {
+      if (!rateBps) return cfg.first;
+      return Math.round(Math.max(cfg.min, Math.min(cfg.max, rateBps / cfg.streams * CHUNK_SECONDS)));
+    }
+
+    async function runThroughput(cfg) {
+      const metric = cfg.metric;
+      setStatus(metric, 'testing');
+      $(metric + 'Value').textContent = '…';
+      const phase = timedSignal(PHASE_MS);
+      const t0 = performance.now();
+      const samples = [{ t: 0, bytes: 0 }];
+      let total = 0, rateBps = 0, endedAt = 0;
+      const sample = () => {
+        const t = performance.now() - t0;
+        samples.push({ t, bytes: total });
+        // Live number and chunk sizing: rate over the last ~1 s.
+        let j = samples.length - 1;
+        while (j > 0 && t - samples[j - 1].t <= 1000) j--;
+        const ref = samples[j === samples.length - 1 ? Math.max(0, j - 1) : j];
+        if (t - ref.t > 0) rateBps = (total - ref.bytes) / ((t - ref.t) / 1000);
+        if (t > 300) $(metric + 'Value').textContent = fmtMbps(rateBps * 8 / 1e6);
+        // Data cap for very fast links: end early once enough has been measured after warm-up.
+        if (total >= cfg.cap && t >= WARMUP_MS + 3000) phaseEnd();
+      };
+      const phaseEnd = () => { if (!endedAt) { endedAt = performance.now() - t0; samples.push({ t: endedAt, bytes: total }); } };
+      phase.signal.addEventListener('abort', phaseEnd, { once: true });
+      const sampler = setInterval(sample, SAMPLE_MS);
+      const onBytes = (n) => { if (!endedAt) { total += n; bytesMoved += n; } };
+
+      const stream = async (k) => {
+        if (k) await new Promise(r => setTimeout(r, k * 150)); // stagger stream starts slightly
+        let fails = 0;
+        while (!endedAt && !phase.signal.aborted && fails < 3) {
+          const req = timedSignal(LIMITS.request + PHASE_MS); // per-request guard; the phase signal ends it sooner
+          const onPhase = () => req.abort();
+          phase.signal.addEventListener('abort', onPhase, { once: true });
+          try {
+            await cfg.request(chunkSize(rateBps, cfg), req.signal, onBytes);
+            fails = 0;
+          } catch (e) {
+            if (phase.signal.aborted || endedAt) break;
+            requestsFailed++; counters(); fails++;
+            await new Promise(r => setTimeout(r, 250));
+          } finally {
+            phase.signal.removeEventListener('abort', onPhase);
+            req.done();
+          }
+          if (endedAt && !phase.signal.aborted) break;
         }
-      } catch (e) {
-        if (!signal.aborted) { requestsFailed++; counters(); throw e; }
+      };
+      const capWatch = setInterval(() => { if (endedAt) phase.abort(); }, 100);
+      try {
+        await Promise.all(Array.from({ length: cfg.streams }, (_, k) => stream(k)));
+      } finally {
+        clearInterval(sampler); clearInterval(capWatch);
+        phaseEnd(); phase.done();
+      }
+      if (stopped()) throw new Error('stopped');
+      if (total <= 0) throw new Error(cfg.label + ' requests to speed.cloudflare.com failed');
+      // Bytes moved after warm-up ÷ time after warm-up (fall back to the whole window if the phase was short).
+      const end = samples[samples.length - 1];
+      const warm = samples.filter(s => s.t <= WARMUP_MS).pop() || samples[0];
+      const base = end.t - warm.t >= 1500 ? warm : samples[0];
+      const mbps = (end.bytes - base.bytes) * 8 / ((end.t - base.t) / 1000) / 1e6;
+      lastPhase[metric] = { seconds: +(end.t / 1000).toFixed(2), measuredFrom: +(base.t / 1000).toFixed(2), mb: +(total / 1e6).toFixed(1), samples: samples.length };
+      $(metric + 'Value').textContent = fmtMbps(mbps);
+      setStatus(metric, 'online');
+      return mbps;
+    }
+
+    async function downloadChunk(bytes, signal, onBytes) {
+      requestsSent++; counters();
+      const res = await fetch(url('/__down?bytes=' + bytes), { cache: 'no-store', signal });
+      if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+      const reader = res.body.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        onBytes(value.byteLength);
       }
     }
 
-    async function measureDownload() {
-      setStatus('download', 'testing');
-      $('downloadValue').textContent = '…';
-      const phase = timedSignal(LIMITS.download);
-      const phaseStart = performance.now();
-      const rounds = [];
-      let estimateBps = 0;
-      try {
-        for (let i = 0; i < DOWN_PLAN.length && !phase.signal.aborted; i++) {
-          let { bytes, streams } = DOWN_PLAN[i];
-          const remaining = (LIMITS.download - (performance.now() - phaseStart)) / 1000;
-          if (estimateBps) bytes = Math.max(250e3, Math.min(bytes, Math.floor(estimateBps * Math.min(TARGET_SECONDS, remaining) / streams)));
-          let got = 0;
-          const t0 = performance.now();
-          let lastPaint = 0;
-          const onBytes = (n) => {
-            got += n; bytesMoved += n;
-            const now = performance.now();
-            if (now - lastPaint > 150 && now - t0 > 200) { lastPaint = now; $('downloadValue').textContent = fmtMbps(got * 8 / ((now - t0) / 1000) / 1e6); }
-          };
-          const results = await Promise.allSettled(Array.from({ length: streams }, () => downloadOne(bytes, phase.signal, onBytes)));
-          const secs = (performance.now() - t0) / 1000;
-          if (got > 0 && secs > 0.05) {
-            estimateBps = got / secs;
-            rounds.push({ mbps: got * 8 / secs / 1e6, secs, warmup: i === 0 });
-          }
-          if (results.every(r => r.status === 'rejected') && !phase.signal.aborted) break;
-        }
-      } finally { phase.done(); }
-      if (stopped()) throw new Error('stopped');
-      // Ignore the 1 MB warm-up (TCP slow start) when larger rounds produced a usable sample.
-      const usable = rounds.filter(r => !r.warmup && r.secs >= 0.3);
-      const pick = (usable.length ? usable : rounds);
-      if (!pick.length) throw new Error('Download requests to speed.cloudflare.com failed');
-      const mbps = Math.max(...pick.map(r => r.mbps));
-      $('downloadValue').textContent = fmtMbps(mbps);
-      setStatus('download', 'online');
-      return mbps;
-    }
-
+    let randomChunk = null;
     function randomBlob(bytes) {
-      const chunk = new Uint8Array(65536);
-      crypto.getRandomValues(chunk);
+      if (!randomChunk) { randomChunk = new Uint8Array(65536); crypto.getRandomValues(randomChunk); }
       const parts = [];
-      for (let left = bytes; left > 0; left -= chunk.length) parts.push(left >= chunk.length ? chunk : chunk.subarray(0, left));
-      return new Blob(parts); // no type → simple CORS request
+      for (let left = bytes; left > 0; left -= randomChunk.length) parts.push(left >= randomChunk.length ? randomChunk : randomChunk.subarray(0, left));
+      return new Blob(parts); // no type and no custom headers
     }
 
-    async function measureUpload() {
-      setStatus('upload', 'testing');
-      $('uploadValue').textContent = '…';
-      const phase = timedSignal(LIMITS.upload);
-      const phaseStart = performance.now();
-      const samples = [];
-      let estimateBps = 0;
-      try {
-        for (let i = 0; i < UP_PLAN.length && !phase.signal.aborted; i++) {
-          let bytes = UP_PLAN[i];
-          const remaining = (LIMITS.upload - (performance.now() - phaseStart)) / 1000;
-          if (estimateBps) bytes = Math.max(250e3, Math.min(bytes, Math.floor(estimateBps * Math.min(TARGET_SECONDS, remaining))));
-          if (remaining < 0.5) break;
-          const body = randomBlob(bytes);
-          requestsSent++; counters();
-          const t0 = performance.now();
-          let res;
-          try {
-            res = await fetch(url('/__up'), { method: 'POST', body, cache: 'no-store', signal: phase.signal });
-            await res.arrayBuffer();
-          } catch (e) {
-            if (phase.signal.aborted) break;
-            requestsFailed++; counters(); continue;
-          }
-          if (!res.ok) { requestsFailed++; counters(); continue; }
-          const secs = Math.max((performance.now() - t0) / 1000, 0.001); // server time not subtracted: it includes reading the body
-          bytesMoved += bytes;
-          estimateBps = bytes / secs;
-          samples.push({ mbps: bytes * 8 / secs / 1e6, warmup: i === 0, secs });
-          $('uploadValue').textContent = fmtMbps(samples[samples.length - 1].mbps);
-        }
-      } finally { phase.done(); }
-      if (stopped()) throw new Error('stopped');
-      const usable = samples.filter(s => !s.warmup);
-      const pick = usable.length ? usable : samples;
-      if (!pick.length) throw new Error('Upload requests to speed.cloudflare.com failed');
-      const mbps = Math.max(...pick.map(s => s.mbps));
-      $('uploadValue').textContent = fmtMbps(mbps);
-      setStatus('upload', 'online');
-      return mbps;
+    // XHR so upload progress is counted as bytes leave the browser, not only when a request finishes.
+    function uploadChunk(bytes, signal, onBytes) {
+      return new Promise((resolve, reject) => {
+        if (signal.aborted) return reject(new DOMException('Aborted', 'AbortError'));
+        requestsSent++; counters();
+        const xhr = new XMLHttpRequest();
+        let sent = 0;
+        const onAbort = () => xhr.abort();
+        const cleanup = () => signal.removeEventListener('abort', onAbort);
+        signal.addEventListener('abort', onAbort, { once: true });
+        xhr.upload.onprogress = (e) => { const d = e.loaded - sent; if (d > 0) { sent = e.loaded; onBytes(d); } };
+        xhr.onload = () => {
+          cleanup();
+          if (bytes > sent) onBytes(bytes - sent);
+          if (xhr.status >= 200 && xhr.status < 300) resolve(); else reject(new Error('HTTP ' + xhr.status));
+        };
+        xhr.onerror = () => { cleanup(); reject(new Error('network error')); };
+        xhr.onabort = () => { cleanup(); reject(new DOMException('Aborted', 'AbortError')); };
+        xhr.open('POST', BASE + '/__up'); // fixed URL so the CORS preflight (needed for upload progress) is cached
+        xhr.send(randomBlob(bytes));
+      });
     }
+
+    const measureDownload = () => runThroughput({ metric: 'download', label: 'Download', streams: 4, first: 1e6, min: 100e3, max: 50e6, cap: 1000e6, request: downloadChunk });
+    const measureUpload = () => runThroughput({ metric: 'upload', label: 'Upload', streams: 3, first: 250e3, min: 64e3, max: 25e6, cap: 500e6, request: uploadChunk });
 
     async function fetchServer() {
       // cdn-cgi/trace returns plain text such as "colo=SIN" (the Cloudflare data center serving you).
@@ -359,9 +390,11 @@
         result.download = await measureDownload();
         phase = 'upload'; setCaption('Measuring upload speed via speed.cloudflare.com…');
         result.upload = await measureUpload();
+        result.server = $('serverName').textContent;
+        saveRecent(result);
         const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         setCaption('Measured via speed.cloudflare.com (' + $('serverName').textContent + ') · ' + now + ' · ' +
-          (bytesMoved / 1e6).toFixed(1) + ' MB transferred. Results vary with Wi-Fi, other traffic and browser; run it twice to compare.');
+          (bytesMoved / 1e6).toFixed(1) + ' MB transferred (a longer test uses more mobile data). Results vary with Wi-Fi, other traffic and browser; run it twice to compare.');
       } catch (err) {
         const userStopped = testCtrl.signal.aborted && !(testCtrl.signal.reason && testCtrl.signal.reason.name === 'TimeoutError');
         const timedOut = testCtrl.signal.aborted && !userStopped;
@@ -369,7 +402,7 @@
           if ($(m + 'Status').className.includes('status-testing')) { $(m + 'Value').textContent = '--'; setStatus(m, userStopped ? 'online' : 'offline'); }
         });
         if (userStopped) setCaption('Test stopped during the ' + phase + ' step. Completed measurements are shown; nothing else was estimated.');
-        else if (timedOut) setCaption('The test hit its 25-second limit during the ' + phase + ' step, so that result is not shown. Your connection may be very slow or busy.', true);
+        else if (timedOut) setCaption('The test hit its 40-second limit during the ' + phase + ' step, so that result is not shown. Your connection may be very slow or busy.', true);
         else setCaption('Could not complete the ' + phase + ' test with speed.cloudflare.com (' + (err && err.message || 'network error') + '). Check your connection or content blocker and try again. No estimated numbers are shown.', true);
         if (!userStopped && result.ping === undefined) $('serverName').textContent = 'Unavailable';
       } finally {
@@ -392,8 +425,44 @@
       testCtrl.abort(new DOMException('Stopped by user', 'AbortError'));
     }
 
+    // Recent tests: last 10 completed tests, kept only in this browser.
+    function loadRecent() {
+      try { const a = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(a) ? a.filter(r => r && typeof r === 'object') : []; } catch (e) { return []; }
+    }
+    function saveRecent(r) {
+      const row = { t: Date.now(), down: r.download, up: r.upload, ping: r.ping, jitter: r.jitter, server: r.server || 'Cloudflare' };
+      const list = [row, ...loadRecent()].slice(0, RECENT_MAX);
+      try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch (e) {}
+      renderRecent();
+    }
+    function renderRecent() {
+      const list = loadRecent(), body = $('recentBody');
+      $('recentPanel').hidden = list.length === 0;
+      body.textContent = '';
+      const num = (v, f) => (typeof v === 'number' && isFinite(v)) ? f(v) : '--';
+      list.forEach(r => {
+        const tr = document.createElement('tr');
+        const d = new Date(r.t);
+        const when = isNaN(d) ? '--' : d.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        [['When', when, 'rt-when'], ['Download', num(r.down, fmtMbps), 'rt-num'], ['Upload', num(r.up, fmtMbps), 'rt-num'],
+         ['Ping', num(r.ping, fmtMs), 'rt-num'], ['Jitter', num(r.jitter, fmtMs), 'rt-num'], ['Server', String(r.server || '--'), 'rt-server']]
+          .forEach(([label, text, cls]) => {
+            const td = document.createElement('td');
+            td.className = cls; td.setAttribute('data-label', label); td.textContent = text;
+            tr.appendChild(td);
+          });
+        body.appendChild(tr);
+      });
+    }
+
     // speed.html?autotest=1 starts a test on load (used for automated checks).
     document.addEventListener('DOMContentLoaded', () => {
+      renderRecent();
+      $('recentClear').addEventListener('click', () => {
+        if (!confirm('Clear your recent speed tests?')) return;
+        try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+        renderRecent();
+      });
       if (new URLSearchParams(location.search).get('autotest') === '1') startSpeedTest();
     });
   </script>

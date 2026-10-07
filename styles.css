@@ -1524,3 +1524,21 @@ a:focus-visible {
 .status-unclear { background: #fff7e6; border-color: rgba(255, 177, 16, 0.45); }
 .status-unclear .status-dot { background: var(--nt-marigold); }
 .recent-dot.unclear { background: var(--nt-marigold); }
+
+/* Speed test recent tests */
+.recent-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.recent-table th { padding: 0 8px 8px 0; text-align: left; font-size: var(--nt-text-caption); font-weight: var(--nt-weight-medium); color: var(--nt-ink-60); border-bottom: var(--nt-hairline); }
+.recent-table td { padding: 10px 8px 10px 0; text-align: left; border-bottom: var(--nt-hairline); white-space: nowrap; }
+.recent-table tr:last-child td { border-bottom: 0; }
+.recent-table .rt-when { color: var(--nt-ink-60); }
+.recent-table .rt-server { color: var(--nt-ink-60); font-size: var(--nt-text-caption); }
+@media (max-width: 640px) {
+  .recent-table thead { display: none; }
+  .recent-table, .recent-table tbody { display: block; }
+  .recent-table tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 8px; padding: 12px 0; border-bottom: var(--nt-hairline); }
+  .recent-table tr:last-child { border-bottom: 0; }
+  .recent-table td { display: block; padding: 0; border: 0; white-space: normal; min-width: 0; overflow-wrap: anywhere; }
+  .recent-table .rt-when { grid-row: 1; grid-column: 1 / 3; font-weight: var(--nt-weight-medium); color: inherit; }
+  .recent-table .rt-server { grid-row: 1; grid-column: 3 / 5; text-align: right; }
+  .recent-table .rt-num::before { content: attr(data-label); display: block; font-size: 11px; color: var(--nt-ink-60); }
+}
