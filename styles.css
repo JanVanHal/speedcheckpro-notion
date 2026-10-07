@@ -107,6 +107,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
+  overflow-y: scroll; /* always reserve the scrollbar so the header never shifts between pages */
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
 }
@@ -723,6 +724,7 @@ a:focus-visible {
   font-size: var(--nt-text-serif);
   line-height: var(--nt-leading-serif);
 }
+.reading-panel .lede:has(+ .meta) { margin-bottom: var(--nt-space-8); }
 .reading-panel .meta {
   margin: 0 0 var(--nt-space-24);
   color: var(--nt-ink-40);
@@ -825,7 +827,7 @@ a:focus-visible {
 
 /* —— Speed test —— */
 .speed-panel {
-  max-width: 900px;
+  max-width: 720px;
   margin: 0 auto;
   background: var(--nt-surface);
   border: var(--nt-hairline);
@@ -834,10 +836,9 @@ a:focus-visible {
 }
 
 .speed-display {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--nt-space-24);
-  justify-content: space-between;
   padding: var(--nt-space-32);
   background: var(--nt-midnight);
   color: var(--nt-on-dark);
@@ -1130,7 +1131,13 @@ a:focus-visible {
   max-width: 720px;
   margin: 0 auto;
 }
-.blog-head { margin-bottom: var(--nt-space-32); }
+.blog-head {
+  margin-bottom: var(--nt-space-32);
+  background: var(--nt-surface);
+  border: var(--nt-hairline);
+  border-radius: var(--nt-radius-card);
+  padding: var(--nt-space-32);
+}
 .blog-head h1 {
   margin: 0 0 var(--nt-space-12);
   color: var(--nt-ink);
@@ -1227,7 +1234,7 @@ a:focus-visible {
   background: var(--nt-surface);
   border: var(--nt-hairline);
   border-radius: var(--nt-radius-card);
-  padding: var(--nt-space-36) 40px var(--nt-space-32);
+  padding: var(--nt-space-32);
 }
 .article-header { margin-bottom: var(--nt-space-24); }
 .article-crumb {
@@ -1238,9 +1245,9 @@ a:focus-visible {
 }
 .article-crumb span { margin: 0 var(--nt-space-4); }
 .article h1 {
-  margin: 0 0 var(--nt-space-16);
+  margin: 0 0 var(--nt-space-12);
   color: var(--nt-ink);
-  font-size: clamp(28px, 4vw, 38px);
+  font-size: clamp(28px, 4vw, 40px);
   font-weight: var(--nt-weight-bold);
   letter-spacing: -1px;
   line-height: 1.2;
@@ -1357,6 +1364,7 @@ a:focus-visible {
 
 @media (max-width: 768px) {
   .article { padding: var(--nt-space-24); }
+  .blog-head { padding: var(--nt-space-24); }
   .article-lede { font-size: var(--nt-text-serif); }
   .article-body { font-size: var(--nt-text-body); }
   .article-nav-next { text-align: left; grid-column: auto; }
@@ -1448,4 +1456,12 @@ a:focus-visible {
 .speed-metric .metric-value {
   white-space: nowrap;
   font-size: clamp(22px, 3.4vw, 28px);
+}
+
+/* —— Speed panel at 720px: keep result boxes tidy —— */
+.speed-results > * { min-width: 0; }
+.speed-results { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.speed-results .value { overflow-wrap: anywhere; }
+@media (max-width: 768px) {
+  .speed-display { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
