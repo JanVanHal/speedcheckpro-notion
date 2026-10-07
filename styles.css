@@ -1521,3 +1521,6 @@ a:focus-visible {
 .recent-host { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: var(--nt-weight-medium); transition: color var(--nt-dur) var(--nt-ease); }
 .recent-meta { flex: none; font-size: var(--nt-text-caption); color: var(--nt-ink-60); }
 @media (max-width: 560px) { .recent-panel { padding: var(--nt-space-16) var(--nt-space-24); } }
+.status-unclear { background: #fff7e6; border-color: rgba(255, 177, 16, 0.45); }
+.status-unclear .status-dot { background: var(--nt-marigold); }
+.recent-dot.unclear { background: var(--nt-marigold); }

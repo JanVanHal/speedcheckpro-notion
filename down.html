@@ -38,7 +38,7 @@
       <div class="tool-panel">
         <div class="tool-header">
           <h1>Is It Down? Website Checker</h1>
-          <p>Enter a website to see whether it is up. We look up its DNS and then try to reach it directly from your browser, with the response time.</p>
+          <p>Enter a website to see whether it is up. We look up its DNS and then try to reach it, with the response time.</p>
         </div>
 
         <form id="downForm" onsubmit="checkSite(); return false;" novalidate>
@@ -174,6 +174,22 @@
       }
     }
 
+
+    // Optional server-side check (Cloudflare Worker). Leave empty to use the browser-only check.
+    const CHECK_API = '';
+    async function serverCheck(host) {
+      if (!CHECK_API) return null;
+      try {
+        return await withTimeout(15000, async (signal) => {
+          const r = await fetch(CHECK_API + '?host=' + encodeURIComponent(host), { signal, cache: 'no-store' });
+          if (!r.ok) throw new Error('API ' + r.status);
+          const d = await r.json();
+          if (typeof d.reached !== 'boolean') throw new Error('Bad API response');
+          return d;
+        });
+      } catch (e) { return null; }
+    }
+
     function setStatus(kind, title, text) {
       const b = $('statusBanner');
       b.className = 'status-banner status-' + kind;
@@ -211,14 +227,14 @@
         b.className = 'recent-item';
         b.setAttribute('aria-label', 'Check ' + r.host + ' again');
         const dot = document.createElement('span');
-        dot.className = 'recent-dot ' + (r.status === 'up' ? 'up' : 'down');
+        dot.className = 'recent-dot ' + (r.status === 'up' || r.status === 'unclear' ? r.status : 'down');
         dot.setAttribute('aria-hidden', 'true');
         const host = document.createElement('span');
         host.className = 'recent-host';
         host.textContent = r.host;
         const meta = document.createElement('span');
         meta.className = 'recent-meta';
-        meta.textContent = (r.status === 'up' ? 'Up' + (r.ms ? ', ' + r.ms + ' ms' : '') : 'Down') + ' \u00b7 ' + timeAgo(r.t);
+        meta.textContent = (r.status === 'up' ? 'Up' + (r.ms ? ', ' + r.ms + ' ms' : '') : r.status === 'unclear' ? 'Unclear' : 'Down') + ' \u00b7 ' + timeAgo(r.t);
         b.append(dot, host, meta);
         b.addEventListener('click', () => {
           $('siteInput').value = r.host;
@@ -253,32 +269,56 @@
       else if (dns.state === 'empty') $('dnsResult').textContent = 'No address records found';
       else $('dnsResult').textContent = 'Could not reach the DNS services';
 
-      let res = null;
-      if (dns.state !== 'nxdomain' && dns.state !== 'empty') {
-        res = await probe('https://' + host + '/');
-        if (!res.ok && !host.startsWith('www.')) {
-          const alt = await probe('https://www.' + host + '/');
-          if (alt.ok) res = alt;
+      const noAddress = dns.state === 'nxdomain' || dns.state === 'empty';
+      let srv = null, res = null;
+      if (!noAddress) {
+        srv = await serverCheck(host);
+        if (!srv) {
+          res = await probe('https://' + host + '/');
+          if (!res.ok && !host.startsWith('www.')) {
+            const alt = await probe('https://www.' + host + '/');
+            if (alt.ok || (res.timeout && !alt.timeout)) res = alt;
+          }
         }
       }
       if (my !== seq) return;
 
       $('checkedAt').textContent = new Date().toLocaleString();
-      if (res && res.ok) {
-        $('reachResult').textContent = 'Yes, the server answered over HTTPS';
-        $('timeResult').textContent = res.ms + ' ms';
-        setStatus('up', host + ' is up', 'It answered from your connection in ' + res.ms + ' ms.');
-        saveRecent(host, 'up', res.ms);
-      } else if (dns.state === 'nxdomain' || dns.state === 'empty') {
+      if (noAddress) {
         $('reachResult').textContent = 'Not tested (no address)';
         $('timeResult').textContent = '–';
         saveRecent(host, 'down');
         setStatus('down', host + ' looks down', dns.state === 'nxdomain' ? 'This domain does not exist. Check the spelling.' : 'The domain has no address records, so browsers cannot reach it.');
+      } else if (srv && srv.reached && srv.status < 500) {
+        $('reachResult').textContent = 'Yes, HTTP ' + srv.status + ' from our server check';
+        $('timeResult').textContent = srv.ms + ' ms';
+        saveRecent(host, 'up', srv.ms);
+        setStatus('up', host + ' is up', 'Our server reached it in ' + srv.ms + ' ms (HTTP ' + srv.status + ').');
+      } else if (srv && srv.reached) {
+        $('reachResult').textContent = 'Server error, HTTP ' + srv.status;
+        $('timeResult').textContent = srv.ms + ' ms';
+        saveRecent(host, 'down', srv.ms);
+        setStatus('down', host + ' has a server error', 'The server answered with HTTP ' + srv.status + ', so pages are probably not loading for anyone.');
+      } else if (srv) {
+        $('reachResult').textContent = srv.timeout ? 'No, timed out from our server' : 'No, our server could not connect';
+        $('timeResult').textContent = '–';
+        saveRecent(host, 'down');
+        setStatus('down', host + ' looks down for everyone', 'DNS works, but our server could not reach the website either.');
+      } else if (res && res.ok) {
+        $('reachResult').textContent = 'Yes, the server answered over HTTPS';
+        $('timeResult').textContent = res.ms + ' ms';
+        saveRecent(host, 'up', res.ms);
+        setStatus('up', host + ' is up', 'It answered from your connection in ' + res.ms + ' ms.');
+      } else if (dns.state === 'ok' && res && !res.timeout) {
+        $('reachResult').textContent = 'Unclear, the site blocked the browser check';
+        $('timeResult').textContent = '–';
+        saveRecent(host, 'unclear');
+        setStatus('unclear', 'Can\u2019t confirm ' + host + ' from here', 'DNS works, but the site blocked our check. Many big sites (like x.com) block checks from other websites, so it is most likely up. Open it in a new tab to be sure.');
       } else {
         $('reachResult').textContent = res && res.timeout ? 'No, timed out after ' + (REACH_TIMEOUT / 1000) + ' s' : 'No, the connection failed';
         $('timeResult').textContent = '–';
         saveRecent(host, 'down');
-        setStatus('down', host + ' looks down from here', dns.state === 'ok' ? 'DNS works, but the website did not answer over HTTPS from your connection.' : 'Neither DNS nor the website could be reached. Check your own connection first.');
+        setStatus('down', host + ' looks down from here', dns.state === 'ok' ? 'DNS works, but the website did not answer from your connection.' : 'Neither DNS nor the website could be reached. Check your own connection first.');
       }
       $('checkBtn').disabled = false;
       $('loading').classList.remove('show');
