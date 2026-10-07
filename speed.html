@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f6f5f4">
   <title>Speed Test - SpeedCheckPro</title>
-  <meta name="description" content="Free internet speed test. Measure download, upload, ping, and jitter. Used for network optimization and ISP comparison.">
+  <meta name="description" content="Free internet speed test. Measure your real download, upload, ping and jitter in the browser via Cloudflare's speed test network.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
@@ -37,7 +37,7 @@
       <div class="speed-panel">
         <div class="tool-header">
           <h1>Internet Speed Test</h1>
-          <p>Measure your internet speed with Ping, Download, Upload, and Jitter tests. Used by network technicians and consumers.</p>
+          <p>Measure your real ping, jitter, download and upload speed from your browser, using Cloudflare&rsquo;s global speed test network.</p>
         </div>
 
         <div class="speed-display">
@@ -71,21 +71,23 @@
         <div class="speed-results">
           <div class="result-card">
             <h3>Server</h3>
-            <div class="value" id="serverName">Default Server</div>
+            <div class="value" id="serverName">speed.cloudflare.com</div>
           </div>
           <div class="result-card">
             <h3>Test Duration</h3>
             <div class="value" id="duration">00:00</div>
           </div>
           <div class="result-card">
-            <h3>Packets Sent</h3>
+            <h3>Requests Sent</h3>
             <div class="value" id="packetsSent">0</div>
           </div>
           <div class="result-card">
-            <h3>Lost Packets</h3>
+            <h3>Failed Requests</h3>
             <div class="value" id="packetsLost">0</div>
           </div>
         </div>
+
+        <p class="caption tool-caption" id="speedStatus" aria-live="polite">Measured via speed.cloudflare.com. The test takes up to 25 seconds and transfers up to about 90 MB on fast connections.</p>
 
         <div class="ad-space">
           <ins class="adsbygoogle"
@@ -124,79 +126,284 @@
   </footer>
 
   <script>
-    let testInterval;
-    let durationInterval;
+    // Real browser speed test against Cloudflare's public, CORS-enabled speed test endpoints.
+    const $ = (id) => document.getElementById(id);
+    const BASE = 'https://speed.cloudflare.com';
+    const LIMITS = { total: 25000, latency: 4000, download: 9000, upload: 9000, request: 8000 };
+    const PING_SAMPLES = 10;
+    const DOWN_PLAN = [{ bytes: 1e6, streams: 1 }, { bytes: 10e6, streams: 2 }, { bytes: 25e6, streams: 2 }];
+    const UP_PLAN = [1e6, 5e6, 10e6];
+    const TARGET_SECONDS = 2.5; // keep each step short on slow links
+
+    let testCtrl = null;
     let isTesting = false;
-    let startTime;
-    let durationSeconds = 0;
-    let packetsSent = 0;
-    let packetsLost = 0;
+    let durationInterval = null;
+    let totalTimer = null;
+    let startTime = 0;
+    let requestsSent = 0;
+    let requestsFailed = 0;
+    let bytesMoved = 0;
+    let reqSeq = 0;
 
-    function startSpeedTest() {
-      if (isTesting) return;
+    const fmtMbps = (v) => v >= 1000 ? (v / 1000).toFixed(2) + ' Gbps' : (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)) + ' Mbps';
+    const fmtMs = (v) => (v >= 10 ? Math.round(v) : v.toFixed(1)) + ' ms';
+    const median = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
-      isTesting = true;
-      startTime = Date.now();
-      durationSeconds = 0;
-      packetsSent = 0;
-      packetsLost = 0;
+    function setStatus(metric, state) { $(metric + 'Status').className = 'status-indicator status-' + state; }
+    function setCaption(text, isError) { const c = $('speedStatus'); c.textContent = text; c.classList.toggle('is-error', !!isError); }
+    function counters() { $('packetsSent').textContent = requestsSent; $('packetsLost').textContent = requestsFailed; }
+    function tickDuration() {
+      const s = Math.floor((performance.now() - startTime) / 1000);
+      $('duration').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }
 
-      document.getElementById('stopBtn').style.display = 'inline-block';
-      document.querySelector('.speed-test-btn').style.display = 'none';
+    // Combine the overall test signal with a per-phase/per-request deadline.
+    function timedSignal(ms) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(new DOMException('Timed out', 'TimeoutError')), ms);
+      const onAbort = () => ctrl.abort(testCtrl.signal.reason);
+      if (testCtrl.signal.aborted) onAbort();
+      else testCtrl.signal.addEventListener('abort', onAbort, { once: true });
+      return { signal: ctrl.signal, done: () => { clearTimeout(timer); testCtrl.signal.removeEventListener('abort', onAbort); } };
+    }
+    const url = (path) => BASE + path + (path.includes('?') ? '&' : '?') + 'r=' + (++reqSeq) + '-' + Date.now();
+    const stopped = () => testCtrl.signal.aborted;
 
-      // Simulate speed test results
-      const pingValues = [12, 45, 23, 67, 34];
-      const downloadValues = [85, 120, 92, 156, 78];
-      const uploadValues = [25, 42, 38, 67, 31];
-      const jitterValues = [2, 8, 4, 15, 6];
+    // Server-side processing time reported by Cloudflare (Server-Timing: cfSpeedEdge;dur=…, cfSpeedWorker;dur=…).
+    function serverTime(res) {
+      const h = res.headers.get('server-timing') || '';
+      let max = 0, m;
+      const re = /cfSpeed\w*;dur=([\d.]+)/g;
+      while ((m = re.exec(h))) max = Math.max(max, parseFloat(m[1]));
+      return max;
+    }
 
-      let pingIndex = 0;
-      let downloadIndex = 0;
-      let uploadIndex = 0;
-      let jitterIndex = 0;
-
-      testInterval = setInterval(() => {
-        // Update values
-        document.getElementById('pingValue').textContent = pingValues[pingIndex++] + ' ms';
-        document.getElementById('downloadValue').textContent = downloadValues[downloadIndex++] + ' Mbps';
-        document.getElementById('uploadValue').textContent = uploadValues[uploadIndex++] + ' Mbps';
-        document.getElementById('jitterValue').textContent = jitterValues[jitterIndex++] + ' ms';
-
-        // Update status
-        document.getElementById('pingStatus').className = 'status-indicator status-online';
-        document.getElementById('downloadStatus').className = 'status-indicator status-online';
-        document.getElementById('uploadStatus').className = 'status-indicator status-online';
-        document.getElementById('jitterStatus').className = 'status-indicator status-online';
-
-        packetsSent += Math.floor(Math.random() * 10 + 5);
-        packetsLost += Math.floor(Math.random() * 3);
-        document.getElementById('packetsSent').textContent = packetsSent;
-        document.getElementById('packetsLost').textContent = packetsLost;
-
-        if (pingIndex >= pingValues.length) {
-          clearInterval(testInterval);
-          stopSpeedTest();
+    async function measureLatency() {
+      setStatus('ping', 'testing'); setStatus('jitter', 'testing');
+      $('pingValue').textContent = '…'; $('jitterValue').textContent = '…';
+      const phase = timedSignal(LIMITS.latency);
+      const samples = [];
+      if (performance.clearResourceTimings) performance.clearResourceTimings();
+      try {
+        for (let i = 0; i <= PING_SAMPLES && !stopped(); i++) {
+          const u = url('/__down?bytes=0');
+          const t0 = performance.now();
+          requestsSent++; counters();
+          let res;
+          try {
+            res = await fetch(u, { cache: 'no-store', signal: phase.signal });
+            await res.arrayBuffer();
+          } catch (e) {
+            if (phase.signal.aborted) break;
+            requestsFailed++; counters(); continue;
+          }
+          if (!res.ok) { requestsFailed++; counters(); continue; }
+          let rtt = performance.now() - t0;
+          // Prefer Resource Timing (request sent → first byte), which excludes queueing and connection setup.
+          const entry = performance.getEntriesByName(u).pop();
+          if (entry && entry.responseStart > 0 && entry.requestStart > 0) rtt = entry.responseStart - entry.requestStart;
+          rtt = Math.max(rtt - serverTime(res), 0.1);
+          if (i === 0) continue; // first request warms up DNS/TLS; not counted
+          samples.push(rtt);
+          $('pingValue').textContent = fmtMs(median(samples));
         }
-      }, 1000);
+      } finally { phase.done(); }
+      if (stopped()) throw new Error('stopped');
+      if (!samples.length) throw new Error('Latency requests to speed.cloudflare.com failed');
+      let jitter = 0;
+      for (let i = 1; i < samples.length; i++) jitter += Math.abs(samples[i] - samples[i - 1]);
+      jitter = samples.length > 1 ? jitter / (samples.length - 1) : 0;
+      const ping = median(samples);
+      $('pingValue').textContent = fmtMs(ping);
+      $('jitterValue').textContent = fmtMs(jitter);
+      setStatus('ping', 'online'); setStatus('jitter', 'online');
+      return { ping, jitter, samples: samples.length };
+    }
 
-      durationInterval = setInterval(() => {
-        durationSeconds++;
-        const minutes = Math.floor(durationSeconds / 60);
-        const seconds = durationSeconds % 60;
-        document.getElementById('duration').textContent =
-          (minutes > 0 ? minutes + ':' : '') +
-          (seconds < 10 ? '0' + seconds : seconds);
-      }, 1000);
+    async function downloadOne(bytes, signal, onBytes) {
+      requestsSent++; counters();
+      try {
+        const res = await fetch(url('/__down?bytes=' + bytes), { cache: 'no-store', signal });
+        if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+        const reader = res.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          onBytes(value.byteLength);
+        }
+      } catch (e) {
+        if (!signal.aborted) { requestsFailed++; counters(); throw e; }
+      }
+    }
+
+    async function measureDownload() {
+      setStatus('download', 'testing');
+      $('downloadValue').textContent = '…';
+      const phase = timedSignal(LIMITS.download);
+      const phaseStart = performance.now();
+      const rounds = [];
+      let estimateBps = 0;
+      try {
+        for (let i = 0; i < DOWN_PLAN.length && !phase.signal.aborted; i++) {
+          let { bytes, streams } = DOWN_PLAN[i];
+          const remaining = (LIMITS.download - (performance.now() - phaseStart)) / 1000;
+          if (estimateBps) bytes = Math.max(250e3, Math.min(bytes, Math.floor(estimateBps * Math.min(TARGET_SECONDS, remaining) / streams)));
+          let got = 0;
+          const t0 = performance.now();
+          let lastPaint = 0;
+          const onBytes = (n) => {
+            got += n; bytesMoved += n;
+            const now = performance.now();
+            if (now - lastPaint > 150 && now - t0 > 200) { lastPaint = now; $('downloadValue').textContent = fmtMbps(got * 8 / ((now - t0) / 1000) / 1e6); }
+          };
+          const results = await Promise.allSettled(Array.from({ length: streams }, () => downloadOne(bytes, phase.signal, onBytes)));
+          const secs = (performance.now() - t0) / 1000;
+          if (got > 0 && secs > 0.05) {
+            estimateBps = got / secs;
+            rounds.push({ mbps: got * 8 / secs / 1e6, secs, warmup: i === 0 });
+          }
+          if (results.every(r => r.status === 'rejected') && !phase.signal.aborted) break;
+        }
+      } finally { phase.done(); }
+      if (stopped()) throw new Error('stopped');
+      // Ignore the 1 MB warm-up (TCP slow start) when larger rounds produced a usable sample.
+      const usable = rounds.filter(r => !r.warmup && r.secs >= 0.3);
+      const pick = (usable.length ? usable : rounds);
+      if (!pick.length) throw new Error('Download requests to speed.cloudflare.com failed');
+      const mbps = Math.max(...pick.map(r => r.mbps));
+      $('downloadValue').textContent = fmtMbps(mbps);
+      setStatus('download', 'online');
+      return mbps;
+    }
+
+    function randomBlob(bytes) {
+      const chunk = new Uint8Array(65536);
+      crypto.getRandomValues(chunk);
+      const parts = [];
+      for (let left = bytes; left > 0; left -= chunk.length) parts.push(left >= chunk.length ? chunk : chunk.subarray(0, left));
+      return new Blob(parts); // no type → simple CORS request
+    }
+
+    async function measureUpload() {
+      setStatus('upload', 'testing');
+      $('uploadValue').textContent = '…';
+      const phase = timedSignal(LIMITS.upload);
+      const phaseStart = performance.now();
+      const samples = [];
+      let estimateBps = 0;
+      try {
+        for (let i = 0; i < UP_PLAN.length && !phase.signal.aborted; i++) {
+          let bytes = UP_PLAN[i];
+          const remaining = (LIMITS.upload - (performance.now() - phaseStart)) / 1000;
+          if (estimateBps) bytes = Math.max(250e3, Math.min(bytes, Math.floor(estimateBps * Math.min(TARGET_SECONDS, remaining))));
+          if (remaining < 0.5) break;
+          const body = randomBlob(bytes);
+          requestsSent++; counters();
+          const t0 = performance.now();
+          let res;
+          try {
+            res = await fetch(url('/__up'), { method: 'POST', body, cache: 'no-store', signal: phase.signal });
+            await res.arrayBuffer();
+          } catch (e) {
+            if (phase.signal.aborted) break;
+            requestsFailed++; counters(); continue;
+          }
+          if (!res.ok) { requestsFailed++; counters(); continue; }
+          const secs = Math.max((performance.now() - t0) / 1000, 0.001); // server time not subtracted: it includes reading the body
+          bytesMoved += bytes;
+          estimateBps = bytes / secs;
+          samples.push({ mbps: bytes * 8 / secs / 1e6, warmup: i === 0, secs });
+          $('uploadValue').textContent = fmtMbps(samples[samples.length - 1].mbps);
+        }
+      } finally { phase.done(); }
+      if (stopped()) throw new Error('stopped');
+      const usable = samples.filter(s => !s.warmup);
+      const pick = usable.length ? usable : samples;
+      if (!pick.length) throw new Error('Upload requests to speed.cloudflare.com failed');
+      const mbps = Math.max(...pick.map(s => s.mbps));
+      $('uploadValue').textContent = fmtMbps(mbps);
+      setStatus('upload', 'online');
+      return mbps;
+    }
+
+    async function fetchServer() {
+      // cdn-cgi/trace returns plain text such as "colo=SIN" (the Cloudflare data center serving you).
+      const t = timedSignal(4000);
+      try {
+        requestsSent++; counters();
+        const res = await fetch(BASE + '/cdn-cgi/trace', { cache: 'no-store', signal: t.signal });
+        const txt = await res.text();
+        const colo = (txt.match(/^colo=(\w+)/m) || [])[1];
+        return colo ? 'Cloudflare ' + colo : 'Cloudflare';
+      } catch (e) {
+        if (!stopped()) { requestsFailed++; counters(); }
+        return 'Cloudflare';
+      } finally { t.done(); }
+    }
+
+    async function startSpeedTest() {
+      if (isTesting) return;
+      isTesting = true;
+      testCtrl = new AbortController();
+      startTime = performance.now();
+      requestsSent = 0; requestsFailed = 0; bytesMoved = 0;
+      counters();
+      ['ping', 'download', 'upload', 'jitter'].forEach(m => { $(m + 'Value').textContent = '--'; setStatus(m, 'online'); });
+      $('duration').textContent = '00:00';
+      $('serverName').textContent = 'Connecting…';
+      $('stopBtn').style.display = 'inline-block';
+      document.querySelector('.speed-test-btn').style.display = 'none';
+      setCaption('Testing against speed.cloudflare.com… measuring latency.');
+      durationInterval = setInterval(tickDuration, 250);
+      totalTimer = setTimeout(() => testCtrl.abort(new DOMException('Time limit', 'TimeoutError')), LIMITS.total);
+
+      const result = {};
+      let phase = 'latency';
+      try {
+        $('serverName').textContent = await fetchServer();
+        if (stopped()) throw new Error('stopped');
+        Object.assign(result, await measureLatency());
+        phase = 'download'; setCaption('Measuring download speed via speed.cloudflare.com…');
+        result.download = await measureDownload();
+        phase = 'upload'; setCaption('Measuring upload speed via speed.cloudflare.com…');
+        result.upload = await measureUpload();
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setCaption('Measured via speed.cloudflare.com (' + $('serverName').textContent + ') · ' + now + ' · ' +
+          (bytesMoved / 1e6).toFixed(1) + ' MB transferred. Results vary with Wi-Fi, other traffic and browser; run it twice to compare.');
+      } catch (err) {
+        const userStopped = testCtrl.signal.aborted && !(testCtrl.signal.reason && testCtrl.signal.reason.name === 'TimeoutError');
+        const timedOut = testCtrl.signal.aborted && !userStopped;
+        ['ping', 'jitter', 'download', 'upload'].forEach(m => {
+          if ($(m + 'Status').className.includes('status-testing')) { $(m + 'Value').textContent = '--'; setStatus(m, userStopped ? 'online' : 'offline'); }
+        });
+        if (userStopped) setCaption('Test stopped during the ' + phase + ' step. Completed measurements are shown; nothing else was estimated.');
+        else if (timedOut) setCaption('The test hit its 25-second limit during the ' + phase + ' step, so that result is not shown. Your connection may be very slow or busy.', true);
+        else setCaption('Could not complete the ' + phase + ' test with speed.cloudflare.com (' + (err && err.message || 'network error') + '). Check your connection or content blocker and try again. No estimated numbers are shown.', true);
+        if (!userStopped && result.ping === undefined) $('serverName').textContent = 'Unavailable';
+      } finally {
+        finishTest();
+      }
+      return result;
+    }
+
+    function finishTest() {
+      isTesting = false;
+      clearInterval(durationInterval);
+      clearTimeout(totalTimer);
+      if (startTime) tickDuration();
+      $('stopBtn').style.display = 'none';
+      document.querySelector('.speed-test-btn').style.display = 'inline-block';
     }
 
     function stopSpeedTest() {
-      isTesting = false;
-      clearInterval(testInterval);
-      clearInterval(durationInterval);
-
-      document.getElementById('stopBtn').style.display = 'none';
-      document.querySelector('.speed-test-btn').style.display = 'inline-block';
+      if (!isTesting || !testCtrl) return;
+      testCtrl.abort(new DOMException('Stopped by user', 'AbortError'));
     }
+
+    // speed.html?autotest=1 starts a test on load (used for automated checks).
+    document.addEventListener('DOMContentLoaded', () => {
+      if (new URLSearchParams(location.search).get('autotest') === '1') startSpeedTest();
+    });
   </script>
 </body>
 </html>

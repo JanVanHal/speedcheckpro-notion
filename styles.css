@@ -1316,3 +1316,89 @@ a:focus-visible {
 }
 .post-card-compact .post-meta-sep,
 .post-card-compact .post-read-time { display: none; }
+
+/* —— DNS checker (live DoH lookup) —— */
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: var(--nt-space-12);
+}
+.input-row .input-group { margin-bottom: var(--nt-space-24); }
+.input-group select {
+  width: 100%;
+  padding: 12px 14px;
+  border: var(--nt-hairline);
+  border-radius: var(--nt-radius-button);
+  background: var(--nt-canvas);
+  color: var(--nt-ink);
+  font-family: var(--nt-font-sans);
+  font-size: var(--nt-text-body);
+  line-height: 1.5;
+  transition: border-color var(--nt-dur) var(--nt-ease), box-shadow var(--nt-dur) var(--nt-ease);
+}
+.input-group select:focus {
+  outline: none;
+  border-color: var(--nt-blue);
+  box-shadow: var(--nt-focus-ring);
+  background: var(--nt-surface);
+}
+.field-error {
+  margin: calc(-1 * var(--nt-space-16)) 0 var(--nt-space-16);
+  color: var(--nt-vermillion);
+  font-size: var(--nt-text-body-sm);
+}
+.field-error:empty { display: none; }
+.dns-status-pill { vertical-align: middle; }
+.dns-table-wrap { overflow-x: auto; }
+.dns-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--nt-text-body-sm);
+}
+.dns-table th {
+  padding: 0 var(--nt-space-12) var(--nt-space-8) 0;
+  color: var(--nt-ink-60);
+  font-size: var(--nt-text-caption);
+  font-weight: var(--nt-weight-medium);
+  letter-spacing: var(--nt-tracking-caption);
+  text-align: left;
+  white-space: nowrap;
+}
+.dns-table td {
+  padding: var(--nt-space-8) var(--nt-space-12) var(--nt-space-8) 0;
+  border-top: var(--nt-hairline);
+  color: var(--nt-ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.dns-table td:not(.dns-data) { white-space: nowrap; overflow-wrap: normal; }
+.dns-table td.dns-data { width: 60%; min-width: 140px; }
+.dns-empty { color: var(--nt-ink-60); font-size: var(--nt-text-body-sm); }
+.tool-caption {
+  margin-top: var(--nt-space-16);
+  color: var(--nt-ink-60);
+  font-size: var(--nt-text-caption);
+  letter-spacing: var(--nt-tracking-caption);
+}
+.tool-caption.is-error { color: var(--nt-vermillion); }
+@media (max-width: 560px) {
+  .input-row { grid-template-columns: 1fr; gap: 0; }
+  .dns-table thead { display: none; }
+  .dns-table tr {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    column-gap: var(--nt-space-12);
+    padding: var(--nt-space-8) 0;
+    border-top: var(--nt-hairline);
+  }
+  .dns-table td { padding: 0; border-top: none; }
+  .dns-table td:nth-child(3)::before { content: "TTL "; color: var(--nt-ink-60); }
+  .dns-table td.dns-data { grid-column: 1 / -1; width: auto; min-width: 0; padding-top: var(--nt-space-4); }
+}
+
+/* Live speed values ("986 Mbps", "3.47 Gbps") stay on one line */
+.speed-metric .metric-value {
+  white-space: nowrap;
+  font-size: clamp(22px, 3.4vw, 28px);
+}
