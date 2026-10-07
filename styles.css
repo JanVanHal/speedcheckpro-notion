@@ -768,8 +768,55 @@ a:focus-visible {
 .contact-form .form-group { margin-bottom: var(--nt-space-20); }
 .contact-form textarea { resize: vertical; min-height: 120px; }
 
+/* —— Mobile menu —— */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  gap: var(--nt-space-8);
+  min-height: 40px;
+  padding: var(--nt-space-8) var(--nt-space-12);
+  border: var(--nt-hairline);
+  border-radius: var(--nt-radius-button);
+  background: var(--nt-surface);
+  color: var(--nt-ink);
+  font: inherit;
+  font-size: var(--nt-text-body-sm);
+  font-weight: var(--nt-weight-medium);
+  cursor: pointer;
+}
+.nav-toggle-bars { display: inline-flex; flex-direction: column; gap: 3px; width: 16px; }
+.nav-toggle-bars span {
+  display: block;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform var(--nt-dur) var(--nt-ease), opacity var(--nt-dur) var(--nt-ease);
+}
+.nav-open .nav-toggle-bars span:nth-child(1) { transform: translateY(5px) rotate(45deg); }
+.nav-open .nav-toggle-bars span:nth-child(2) { opacity: 0; }
+.nav-open .nav-toggle-bars span:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
+
 @media (max-width: 768px) {
+  .nav-toggle { display: inline-flex; }
   .nav-links { display: none; }
+  .site-header.nav-open .nav-links {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: var(--nt-space-4);
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    padding: var(--nt-space-12) var(--nt-space-16) var(--nt-space-16);
+    background: var(--nt-canvas);
+    border-bottom: var(--nt-hairline);
+    box-shadow: var(--nt-shadow-nav);
+  }
+  .site-header.nav-open .nav-links a { display: flex; width: 100%; font-size: var(--nt-text-body, 16px); }
+  .site-header.nav-open .nav-links a.active { box-shadow: inset 2px 0 0 var(--nt-blue); background: rgba(0, 0, 0, 0.04); }
   .hero { padding: var(--nt-space-64) 0 var(--nt-space-32); }
   .tool-panel,
   .reading-panel { padding: var(--nt-space-24); }

@@ -18,7 +18,8 @@
     <div class="container">
       <nav class="site-nav" aria-label="Primary">
         <a href="index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
-        <ul class="nav-links">
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="primary-menu" onclick="var h=this.closest('.site-header'),o=h.classList.toggle('nav-open');this.setAttribute('aria-expanded',o);this.setAttribute('aria-label',o?'Close menu':'Open menu')"><span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>Menu</button>
+        <ul class="nav-links" id="primary-menu">
           <li><a href="index.html" class="active">Home</a></li>
           <li><a href="dns.html">DNS Checker</a></li>
           <li><a href="ip.html">IP Address</a></li>
