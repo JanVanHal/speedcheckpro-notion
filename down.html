@@ -84,6 +84,14 @@
           <p class="caption tool-caption">This test runs from your own connection. It can tell that a site answers, but not whether the page shows an error. If the site is down here but DNS works, try again from another network (for example mobile data) to see whether it is down for everyone.</p>
         </div>
       </div>
+      <div class="tool-panel recent-panel" id="recentPanel" hidden>
+        <div class="recent-head">
+          <h2>Recent checks</h2>
+          <button type="button" class="recent-clear" id="recentClear">Clear</button>
+        </div>
+        <ul class="recent-list" id="recentList"></ul>
+        <p class="caption tool-caption">Your last ten checks, saved only in this browser. Tap a site to check it again.</p>
+      </div>
     </div>
   </main>
 
@@ -173,6 +181,55 @@
       $('statusText').textContent = text;
     }
 
+
+    const RECENT_KEY = 'scp-down-recent', RECENT_MAX = 10;
+    function loadRecent() {
+      try { const a = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    }
+    function saveRecent(host, status, ms) {
+      const list = loadRecent().filter(r => r && r.host !== host);
+      list.unshift({ host, status, ms: ms || null, t: Date.now() });
+      try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX))); } catch (e) {}
+      renderRecent();
+    }
+    function timeAgo(t) {
+      const m = Math.round((Date.now() - t) / 60000);
+      if (m < 1) return 'just now';
+      if (m < 60) return m + ' min ago';
+      const h = Math.round(m / 60);
+      if (h < 24) return h + ' h ago';
+      return new Date(t).toLocaleDateString();
+    }
+    function renderRecent() {
+      const list = loadRecent(), ul = $('recentList');
+      $('recentPanel').hidden = list.length === 0;
+      ul.textContent = '';
+      list.forEach(r => {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'recent-item';
+        b.setAttribute('aria-label', 'Check ' + r.host + ' again');
+        const dot = document.createElement('span');
+        dot.className = 'recent-dot ' + (r.status === 'up' ? 'up' : 'down');
+        dot.setAttribute('aria-hidden', 'true');
+        const host = document.createElement('span');
+        host.className = 'recent-host';
+        host.textContent = r.host;
+        const meta = document.createElement('span');
+        meta.className = 'recent-meta';
+        meta.textContent = (r.status === 'up' ? 'Up' + (r.ms ? ', ' + r.ms + ' ms' : '') : 'Down') + ' \u00b7 ' + timeAgo(r.t);
+        b.append(dot, host, meta);
+        b.addEventListener('click', () => {
+          $('siteInput').value = r.host;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          checkSite();
+        });
+        li.appendChild(b);
+        ul.appendChild(li);
+      });
+    }
+
     let seq = 0;
     async function checkSite() {
       const input = $('siteInput'), err = $('siteError');
@@ -211,13 +268,16 @@
         $('reachResult').textContent = 'Yes, the server answered over HTTPS';
         $('timeResult').textContent = res.ms + ' ms';
         setStatus('up', host + ' is up', 'It answered from your connection in ' + res.ms + ' ms.');
+        saveRecent(host, 'up', res.ms);
       } else if (dns.state === 'nxdomain' || dns.state === 'empty') {
         $('reachResult').textContent = 'Not tested (no address)';
         $('timeResult').textContent = '–';
+        saveRecent(host, 'down');
         setStatus('down', host + ' looks down', dns.state === 'nxdomain' ? 'This domain does not exist. Check the spelling.' : 'The domain has no address records, so browsers cannot reach it.');
       } else {
         $('reachResult').textContent = res && res.timeout ? 'No, timed out after ' + (REACH_TIMEOUT / 1000) + ' s' : 'No, the connection failed';
         $('timeResult').textContent = '–';
+        saveRecent(host, 'down');
         setStatus('down', host + ' looks down from here', dns.state === 'ok' ? 'DNS works, but the website did not answer over HTTPS from your connection.' : 'Neither DNS nor the website could be reached. Check your own connection first.');
       }
       $('checkBtn').disabled = false;
@@ -225,6 +285,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      renderRecent();
+      $('recentClear').addEventListener('click', () => {
+        if (!confirm('Clear your recent checks?')) return;
+        try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+        renderRecent();
+      });
       const p = new URLSearchParams(location.search).get('site');
       if (p) { $('siteInput').value = p; checkSite(); }
     });

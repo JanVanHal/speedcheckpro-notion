@@ -1504,3 +1504,20 @@ a:focus-visible {
 .status-checking .status-dot { animation: status-pulse 1s ease-in-out infinite; }
 @keyframes status-pulse { 50% { opacity: 0.3; } }
 @media (prefers-reduced-motion: reduce) { .status-checking .status-dot { animation: none; } }
+
+/* Is It Down? recent checks */
+.recent-panel { margin-top: var(--nt-space-16); padding: var(--nt-space-24) var(--nt-space-32); }
+.recent-panel[hidden] { display: none; }
+.recent-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: var(--nt-space-8); }
+.recent-head h2 { margin: 0; font-size: 18px; font-weight: var(--nt-weight-semibold); }
+.recent-clear { background: none; border: 0; padding: 4px 0; font: inherit; font-size: var(--nt-text-caption); color: var(--nt-ink-60); cursor: pointer; }
+.recent-clear:hover { color: var(--nt-coral); }
+.recent-list { list-style: none; margin: 0; padding: 0; }
+.recent-list li + li { border-top: var(--nt-hairline); }
+.recent-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 0; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.recent-item:hover .recent-host, .recent-item:focus-visible .recent-host { color: var(--nt-blue); }
+.recent-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--nt-coral); }
+.recent-dot.up { background: var(--nt-blue); }
+.recent-host { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: var(--nt-weight-medium); transition: color var(--nt-dur) var(--nt-ease); }
+.recent-meta { flex: none; font-size: var(--nt-text-caption); color: var(--nt-ink-60); }
+@media (max-width: 560px) { .recent-panel { padding: var(--nt-space-16) var(--nt-space-24); } }
