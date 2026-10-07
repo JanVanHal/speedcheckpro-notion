@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>Public vs private IP addresses, IPv4 vs IPv6, and what an IP lookup reveals - SpeedCheckPro Blog</title>
+  <meta name="description" content="Understand the difference between public and private IP addresses, how IPv4 and IPv6 differ, and what an IP address lookup can and cannot tell someone about you.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="../index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+        <ul class="nav-links">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../dns.html">DNS Checker</a></li>
+          <li><a href="../ip.html">IP Address</a></li>
+          <li><a href="../speed.html">Speed Test</a></li>
+          <li><a href="../vpn.html">VPN Compare</a></li>
+          <li><a href="../blog.html" class="active">Blog</a></li>
+          <li><a href="../about.html">About</a></li>
+          <li><a href="../contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="container">
+      <article class="article">
+        <header class="article-header">
+          <p class="article-crumb"><a href="../blog.html">Blog</a> <span aria-hidden="true">/</span> IP</p>
+          <h1>Public vs private IP addresses, IPv4 vs IPv6, and what an IP lookup reveals</h1>
+          <div class="post-meta"><span class="pill pill-marigold">IP</span><time datetime="2026-07-08">July 8, 2026</time><span class="post-meta-sep" aria-hidden="true">&middot;</span><span class="post-read-time">3 min read</span></div>
+          <p class="article-byline">By SpeedCheckPro team</p>
+        </header>
+
+        <p class="article-lede">Your laptop probably has an IP address that starts with 192.168, yet a website sees a completely different one. Both are real, they just live on different sides of your router. Knowing which is which makes troubleshooting, VPN setup and privacy questions much easier.</p>
+
+        <div class="article-body">
+<h2>Two kinds of address</h2>
+<p>An IP address identifies a device on a network so that data can find its way there and back. At home there are usually two layers:</p>
+<ul>
+  <li><strong>Private addresses</strong> are used inside your home network. Your router hands them out to phones, laptops and smart TVs. They are not reachable directly from the internet.</li>
+  <li><strong>A public address</strong> is assigned to your router by your internet provider. It is the address the rest of the internet sees when any device in your home goes online.</li>
+</ul>
+<p>The router sits between the two and uses Network Address Translation (NAT) to keep track of which internal device each conversation belongs to. That is why a whole household can share one public IPv4 address.</p>
+
+<h2>Recognising private ranges</h2>
+<p>Three IPv4 ranges are reserved for private networks (RFC 1918):</p>
+<ul>
+  <li><code>10.0.0.0</code> to <code>10.255.255.255</code></li>
+  <li><code>172.16.0.0</code> to <code>172.31.255.255</code></li>
+  <li><code>192.168.0.0</code> to <code>192.168.255.255</code></li>
+</ul>
+<p>A few other special ranges are worth knowing. <code>127.0.0.1</code> is loopback, meaning "this device". Addresses starting with <code>169.254</code> are self-assigned and usually mean the device failed to get an address from the router. Addresses in <code>100.64.0.0/10</code> are used for carrier-grade NAT, where your provider shares one public address among many customers. If your router's WAN address falls in that range, you are behind CGNAT, which can affect port forwarding and some games.</p>
+
+<h2>IPv4 vs IPv6</h2>
+<p>IPv4 addresses are 32 bits long and written as four numbers, such as <code>203.0.113.42</code>. That allows just over four billion combinations, which is far fewer than the number of connected devices today. NAT and CGNAT are largely workarounds for that shortage.</p>
+<p>IPv6 addresses are 128 bits long and written in hexadecimal groups separated by colons, for example <code>2001:db8:85a3::8a2e:370:7334</code>. A double colon stands in for a run of zero groups. The address space is so large that every device can have its own globally routable address, so NAT is not needed.</p>
+<p>Some practical differences:</p>
+<ul>
+  <li>Many networks run both at once (dual stack). Your device may use IPv6 for some sites and IPv4 for others.</li>
+  <li>IPv6 devices often have several addresses, including a link-local one starting with <code>fe80:</code> and temporary "privacy" addresses that change over time so you are harder to track.</li>
+  <li>Without NAT, the router's firewall does the job of blocking unsolicited inbound traffic. Most home routers do this by default.</li>
+</ul>
+
+<h2>Finding your own addresses</h2>
+<p>To see your <strong>private</strong> address:</p>
+<ul>
+  <li>Windows: run <code>ipconfig</code> and look for the IPv4 or IPv6 address of your active adapter.</li>
+  <li>macOS: open System Settings, then Network, or run <code>ipconfig getifaddr en0</code> for Wi-Fi.</li>
+  <li>Linux: run <code>ip addr</code>.</li>
+</ul>
+<p>Your <strong>public</strong> address cannot be read from your own device, because only the outside world sees it. You need an external service, such as an IP lookup tool, to report it back to you.</p>
+
+<h2>What an IP lookup reveals</h2>
+<p>A lookup on a public IP address typically returns:</p>
+<ul>
+  <li>The internet provider or organisation that holds the address.</li>
+  <li>The autonomous system number (ASN), which identifies the network that routes it.</li>
+  <li>An approximate location, usually a country and region, sometimes a city.</li>
+  <li>A time zone derived from that location.</li>
+</ul>
+<p>Location data comes from geolocation databases, not GPS. It is often accurate at country level but can be off by a long way at city level, especially for mobile networks and CGNAT, where many users share an address that may be registered far from them.</p>
+
+<h2>What it does not reveal</h2>
+<p>An IP lookup does not show your name, your street address or your browsing history. Linking an address to a specific customer requires your provider's records, which they generally only release under a legal process. That said, an IP address is still a useful identifier when combined with other data, which is why many people prefer to limit how widely theirs is shared.</p>
+
+<h2>Dynamic, static and VPN addresses</h2>
+<p>Most home connections get a dynamic public IP that can change when the router reconnects or after a lease expires. Businesses often pay for a static address that never changes. When you use a VPN, websites see the VPN server's public address instead of yours, which is the easiest way to verify that a VPN is actually working.</p>
+        </div>
+
+        <aside class="article-callout" aria-label="Try it">
+          <h2>Try it</h2>
+          <p>Open the IP Address tool to see the public IP that websites see, along with the IP version, ISP, ASN and approximate location reported for it. Run it again with your VPN on to confirm the address changes.</p>
+          <div class="callout-actions">
+          <a href="../ip.html" class="btn btn-primary">Check your IP address</a>
+          </div>
+        </aside>
+
+        <nav class="article-nav" aria-label="More articles">
+        <a class="article-nav-card" href="what-is-dns-and-how-to-check-dns-resolution.html" rel="prev"><span class="article-nav-label">Previous article</span><span class="article-nav-title">What DNS is and how to check DNS resolution</span></a>
+        <a class="article-nav-card article-nav-next" href="how-to-read-speed-test-results.html" rel="next"><span class="article-nav-label">Next article</span><span class="article-nav-title">How to read speed test results: download, upload, ping and jitter</span></a>
+        </nav>
+
+        <a href="../blog.html" class="back-link">Back to all articles</a>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <a href="../index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+      <ul class="footer-links">
+        <li><a href="../blog.html">Blog</a></li>
+        <li><a href="../privacy.html">Privacy Policy</a></li>
+        <li><a href="../terms.html">Terms of Service</a></li>
+        <li><a href="../about.html">About Us</a></li>
+        <li><a href="../contact.html">Contact</a></li>
+        <li><a href="../dmca.html">DMCA</a></li>
+      </ul>
+      <p class="footer-copy">&copy; 2026 SpeedCheckPro. Free tools, privacy first.</p>
+    </div>
+  </footer>
+</body>
+</html>

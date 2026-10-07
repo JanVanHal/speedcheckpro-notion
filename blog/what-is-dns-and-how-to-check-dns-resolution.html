@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>What DNS is and how to check DNS resolution - SpeedCheckPro Blog</title>
+  <meta name="description" content="A plain-language guide to the Domain Name System: how a lookup works, the record types you will see, why caching matters, and how to check DNS resolution yourself.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="../index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+        <ul class="nav-links">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../dns.html">DNS Checker</a></li>
+          <li><a href="../ip.html">IP Address</a></li>
+          <li><a href="../speed.html">Speed Test</a></li>
+          <li><a href="../vpn.html">VPN Compare</a></li>
+          <li><a href="../blog.html" class="active">Blog</a></li>
+          <li><a href="../about.html">About</a></li>
+          <li><a href="../contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="container">
+      <article class="article">
+        <header class="article-header">
+          <p class="article-crumb"><a href="../blog.html">Blog</a> <span aria-hidden="true">/</span> DNS</p>
+          <h1>What DNS is and how to check DNS resolution</h1>
+          <div class="post-meta"><span class="pill pill-sky">DNS</span><time datetime="2026-06-12">June 12, 2026</time><span class="post-meta-sep" aria-hidden="true">&middot;</span><span class="post-read-time">4 min read</span></div>
+          <p class="article-byline">By SpeedCheckPro team</p>
+        </header>
+
+        <p class="article-lede">Every time you open a website, your device first has to turn a name like example.com into a numeric IP address. That translation is the Domain Name System, and when it misbehaves, the whole internet can feel broken even though your connection is fine.</p>
+
+        <div class="article-body">
+<h2>DNS in one paragraph</h2>
+<p>Computers route traffic using IP addresses, but people remember names. DNS is the distributed directory that maps one to the other. It is not a single database: responsibility is split across many servers worldwide, each authoritative for its own slice of the namespace. That design is why DNS scales, and also why a change you make to a domain does not appear everywhere at the same instant.</p>
+
+<h2>What happens during a lookup</h2>
+<p>When you visit a site, the request usually goes through these steps:</p>
+<ol>
+  <li><strong>Local caches.</strong> Your browser and operating system check whether they already know the answer from a recent lookup.</li>
+  <li><strong>Recursive resolver.</strong> If not, the query goes to a resolver, typically run by your internet provider, or a public one you chose such as Cloudflare (1.1.1.1), Google (8.8.8.8) or Quad9 (9.9.9.9).</li>
+  <li><strong>Root and TLD servers.</strong> If the resolver has no cached answer, it asks a root server where to find the servers for the top-level domain (for example <code>.com</code>), then asks those where to find the domain's own nameservers.</li>
+  <li><strong>Authoritative nameserver.</strong> Finally it asks the domain's authoritative nameserver, which returns the actual record. The resolver caches the answer and hands it back to you.</li>
+</ol>
+<p>All of this normally takes a fraction of a second, and most of the time the answer comes straight from a cache.</p>
+
+<h2>The records you will see most</h2>
+<ul>
+  <li><strong>A</strong> maps a name to an IPv4 address.</li>
+  <li><strong>AAAA</strong> maps a name to an IPv6 address.</li>
+  <li><strong>CNAME</strong> makes one name an alias of another name.</li>
+  <li><strong>MX</strong> lists the mail servers that accept email for the domain.</li>
+  <li><strong>NS</strong> names the authoritative nameservers for the domain.</li>
+  <li><strong>TXT</strong> holds free-form text, commonly used for email authentication (SPF, DKIM, DMARC) and domain verification.</li>
+</ul>
+
+<h2>TTL and the myth of "propagation"</h2>
+<p>Every record carries a TTL (time to live), measured in seconds. It tells resolvers how long they may cache the answer before asking again. A TTL of 3600 means an answer can be reused for up to an hour.</p>
+<p>When people say a DNS change is "propagating", what is really happening is that cached copies are expiring at different times in different resolvers. If you plan to move a site to a new server, lowering the TTL a day or so in advance shortens that window. After the move is stable, you can raise it again.</p>
+
+<h2>How to check DNS resolution yourself</h2>
+<p>You do not need special software. Every major operating system ships with a lookup tool:</p>
+<ul>
+  <li><code>nslookup example.com</code> works on Windows, macOS and Linux and shows which resolver answered.</li>
+  <li><code>dig example.com A</code> (macOS and Linux) gives more detail, including the TTL. Add <code>+short</code> for just the answer.</li>
+  <li><code>dig @1.1.1.1 example.com</code> or <code>nslookup example.com 8.8.8.8</code> asks a specific resolver, which is the quickest way to tell whether your usual resolver is the problem.</li>
+</ul>
+<p>Comparing answers from two different resolvers is the single most useful DNS test. If a public resolver returns an address and your default one does not, the problem is with your resolver, not the website.</p>
+
+<h2>Reading common errors</h2>
+<ul>
+  <li><strong>NXDOMAIN</strong> means the name does not exist. Check for typos, or confirm the domain has not expired.</li>
+  <li><strong>SERVFAIL</strong> means the resolver could not get a valid answer. This can point to a problem with the domain's nameservers or with DNSSEC validation.</li>
+  <li><strong>Timeouts</strong> usually mean the resolver itself is unreachable, which often comes down to local network or router issues.</li>
+</ul>
+
+<h2>Clearing a stale cache</h2>
+<p>If a site moved and your device still goes to the old address, flush the local cache:</p>
+<ul>
+  <li>Windows: <code>ipconfig /flushdns</code></li>
+  <li>macOS: <code>sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder</code></li>
+  <li>Linux with systemd-resolved: <code>resolvectl flush-caches</code></li>
+</ul>
+<p>Browsers keep their own cache too, so restarting the browser helps. Your router may also cache answers; restarting it clears that layer.</p>
+
+<h2>A note on privacy</h2>
+<p>Traditional DNS queries are sent unencrypted, so anyone on the network path can see which names you look up. DNS over HTTPS (DoH) and DNS over TLS (DoT) encrypt those queries between you and the resolver. Most modern browsers and operating systems support at least one of them, usually in their network or privacy settings. Encryption hides queries from the network in between, but the resolver you choose still sees them, so pick one whose privacy policy you are comfortable with.</p>
+        </div>
+
+        <aside class="article-callout" aria-label="Try it">
+          <h2>Try it</h2>
+          <p>Enter a domain in the DNS Checker to see its A and NS records and TTL side by side, then compare what you see with the output of nslookup or dig on your own machine.</p>
+          <div class="callout-actions">
+          <a href="../dns.html" class="btn btn-primary">Open the DNS Checker</a>
+          </div>
+        </aside>
+
+        <nav class="article-nav" aria-label="More articles">
+        <a class="article-nav-card article-nav-next" href="public-vs-private-ip-addresses-ipv4-vs-ipv6.html" rel="next"><span class="article-nav-label">Next article</span><span class="article-nav-title">Public vs private IP addresses, IPv4 vs IPv6, and what an IP lookup reveals</span></a>
+        </nav>
+
+        <a href="../blog.html" class="back-link">Back to all articles</a>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <a href="../index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+      <ul class="footer-links">
+        <li><a href="../blog.html">Blog</a></li>
+        <li><a href="../privacy.html">Privacy Policy</a></li>
+        <li><a href="../terms.html">Terms of Service</a></li>
+        <li><a href="../about.html">About Us</a></li>
+        <li><a href="../contact.html">Contact</a></li>
+        <li><a href="../dmca.html">DMCA</a></li>
+      </ul>
+      <p class="footer-copy">&copy; 2026 SpeedCheckPro. Free tools, privacy first.</p>
+    </div>
+  </footer>
+</body>
+</html>

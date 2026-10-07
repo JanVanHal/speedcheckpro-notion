@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>Troubleshooting slow internet at home: a step-by-step checklist - SpeedCheckPro Blog</title>
+  <meta name="description" content="A practical checklist for fixing slow home internet: narrow down the problem, test wired vs Wi-Fi, check DNS and your IP, and gather evidence before calling your provider.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="../index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+        <ul class="nav-links">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../dns.html">DNS Checker</a></li>
+          <li><a href="../ip.html">IP Address</a></li>
+          <li><a href="../speed.html">Speed Test</a></li>
+          <li><a href="../vpn.html">VPN Compare</a></li>
+          <li><a href="../blog.html" class="active">Blog</a></li>
+          <li><a href="../about.html">About</a></li>
+          <li><a href="../contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="container">
+      <article class="article">
+        <header class="article-header">
+          <p class="article-crumb"><a href="../blog.html">Blog</a> <span aria-hidden="true">/</span> Troubleshooting</p>
+          <h1>Troubleshooting slow internet at home: a step-by-step checklist</h1>
+          <div class="post-meta"><span class="pill pill-peach">Troubleshooting</span><time datetime="2026-09-22">September 22, 2026</time><span class="post-meta-sep" aria-hidden="true">&middot;</span><span class="post-read-time">4 min read</span></div>
+          <p class="article-byline">By SpeedCheckPro team</p>
+        </header>
+
+        <p class="article-lede">When the internet feels slow, the instinct is to blame the provider. Sometimes that is right, but often the cause is closer to home. Working through the steps below, in order, will usually find the problem, and if not, it will give you solid evidence to take to your provider.</p>
+
+        <div class="article-body">
+<h2>1. Narrow down what is slow</h2>
+<p>Before changing anything, ask three questions:</p>
+<ul>
+  <li><strong>One device or all of them?</strong> If only one laptop is slow, the problem is probably that device.</li>
+  <li><strong>Every website or just some?</strong> If one service is slow and others are fine, the problem may be on their end.</li>
+  <li><strong>All the time or at certain times?</strong> Slowdowns every evening suggest congestion, at home or on the provider's network.</li>
+</ul>
+<p>Write the answers down. They will save time later, especially if you end up calling support.</p>
+
+<h2>2. Restart in the right order</h2>
+<p>Turn off the modem and router (or the combined box), wait about thirty seconds, then turn on the modem first and the router once the modem is online. Restart the slow device too. This clears stuck sessions, full caches and memory leaks in older router firmware. It is a cliché because it works more often than it should.</p>
+
+<h2>3. Get a baseline with a speed test</h2>
+<p>Run a <a href="../speed.html">speed test</a> on the slow device and note download, upload, ping and jitter. Run it two or three times, since a single result can be misleading. Close streaming apps and pause large downloads first so you are measuring the connection, not your own traffic.</p>
+
+<h2>4. Compare Wi-Fi with a wired connection</h2>
+<p>If you can, plug a computer straight into the router with an Ethernet cable and test again. This one comparison splits the problem in two:</p>
+<ul>
+  <li><strong>Wired is fast, Wi-Fi is slow:</strong> the problem is inside your home. Continue with step 5.</li>
+  <li><strong>Wired is slow too:</strong> the problem is the line, the modem or the provider. Skip to step 8.</li>
+</ul>
+
+<h2>5. Improve the Wi-Fi</h2>
+<ul>
+  <li>Move the router to a central, raised, open spot, away from thick walls, metal and microwaves.</li>
+  <li>Use the 5 GHz band (or 6 GHz if both router and device support it) for nearby devices. Keep 2.4 GHz for devices further away.</li>
+  <li>If neighbouring networks are crowded, try a different channel in the router settings, or let the router pick automatically.</li>
+  <li>For larger homes, a mesh system or a wired access point usually works better than a simple range extender.</li>
+</ul>
+
+<h2>6. Look for bandwidth hogs and device issues</h2>
+<p>Check whether a console, smart TV or computer is downloading updates or syncing a cloud backup. Many routers show per-device usage in their admin page. On the slow device itself, install operating system and network driver updates, disable browser extensions you do not need, and try a different browser to rule it out.</p>
+
+<h2>7. Check DNS</h2>
+<p>If pages take a long time to <em>start</em> loading but download quickly once they do, DNS is a likely suspect. Use the <a href="../dns.html">DNS Checker</a> and the command line (<code>nslookup example.com</code>) to confirm names resolve. Then compare your default resolver with a public one, for example <code>nslookup example.com 1.1.1.1</code>. If the public resolver is consistently quicker or more reliable, change the DNS settings on your router or device. Flush your DNS cache afterwards so old answers are not reused.</p>
+
+<h2>8. Check your IP and VPN</h2>
+<p>Open the <a href="../ip.html">IP Address tool</a>. If it shows a VPN server instead of your provider, the VPN is in the path and will affect speed. Test with it switched off. If the ISP shown is unexpected, or your router's WAN address is in the <code>100.64.0.0/10</code> range, you may be behind carrier-grade NAT, which can cause problems with gaming, port forwarding and some remote access tools.</p>
+
+<h2>9. Update or replace old equipment</h2>
+<p>Check the router's admin page for firmware updates. Very old routers and modems may not support the speeds of newer plans, and an old Ethernet cable can limit a wired connection. Many devices show the negotiated link speed in their network settings, which helps spot this.</p>
+
+<h2>10. Contact your provider with evidence</h2>
+<p>If wired tests are still well below your plan, contact your provider. Have ready:</p>
+<ul>
+  <li>Dates, times and results of your wired speed tests.</li>
+  <li>Whether the problem is constant or happens at certain times.</li>
+  <li>The steps you have already tried, such as restarting equipment and testing wired.</li>
+  <li>Any lights or error messages on the modem.</li>
+</ul>
+<p>Clear notes like these move the conversation past the basic script quickly, and make it easier to request a line check or a technician visit.</p>
+        </div>
+
+        <aside class="article-callout" aria-label="Try it">
+          <h2>Try it</h2>
+          <p>Run the Speed Test first to get a baseline, then use the DNS Checker and IP Address tool as you work through the steps.</p>
+          <div class="callout-actions">
+          <a href="../speed.html" class="btn btn-primary">Start with a speed test</a>
+          <a href="../dns.html" class="btn btn-ghost">DNS Checker</a>
+          <a href="../ip.html" class="btn btn-ghost">IP Address tool</a>
+          </div>
+        </aside>
+
+        <nav class="article-nav" aria-label="More articles">
+        <a class="article-nav-card" href="choosing-a-vpn-what-actually-matters.html" rel="prev"><span class="article-nav-label">Previous article</span><span class="article-nav-title">Choosing a VPN: what actually matters</span></a>
+        </nav>
+
+        <a href="../blog.html" class="back-link">Back to all articles</a>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <a href="../index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+      <ul class="footer-links">
+        <li><a href="../blog.html">Blog</a></li>
+        <li><a href="../privacy.html">Privacy Policy</a></li>
+        <li><a href="../terms.html">Terms of Service</a></li>
+        <li><a href="../about.html">About Us</a></li>
+        <li><a href="../contact.html">Contact</a></li>
+        <li><a href="../dmca.html">DMCA</a></li>
+      </ul>
+      <p class="footer-copy">&copy; 2026 SpeedCheckPro. Free tools, privacy first.</p>
+    </div>
+  </footer>
+</body>
+</html>

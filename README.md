@@ -22,6 +22,9 @@ Static HTML restyle of SpeedCheckPro using Jan’s **Notion** design system (war
 | `contact.html` | Contact form |
 | `privacy.html` | Privacy policy |
 | `terms.html` | Terms of service |
+| `dmca.html` | DMCA / copyright policy |
+| `blog.html` | Blog index (newest first) |
+| `blog/*.html` | Blog articles (5), link `../styles.css` |
 | `styles.css` | Shared Notion tokens + components |
 | `preview-*.png` | Headless Chrome screenshots (~1280 wide) |
 

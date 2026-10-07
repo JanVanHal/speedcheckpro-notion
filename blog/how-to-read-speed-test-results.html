@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f6f5f4">
+  <title>How to read speed test results: download, upload, ping and jitter - SpeedCheckPro Blog</title>
+  <meta name="description" content="What download, upload, ping and jitter actually measure, which numbers matter for streaming, gaming and video calls, and why speed test results vary from run to run.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="../index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+        <ul class="nav-links">
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../dns.html">DNS Checker</a></li>
+          <li><a href="../ip.html">IP Address</a></li>
+          <li><a href="../speed.html">Speed Test</a></li>
+          <li><a href="../vpn.html">VPN Compare</a></li>
+          <li><a href="../blog.html" class="active">Blog</a></li>
+          <li><a href="../about.html">About</a></li>
+          <li><a href="../contact.html">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="container">
+      <article class="article">
+        <header class="article-header">
+          <p class="article-crumb"><a href="../blog.html">Blog</a> <span aria-hidden="true">/</span> Speed</p>
+          <h1>How to read speed test results: download, upload, ping and jitter</h1>
+          <div class="post-meta"><span class="pill pill-coral">Speed</span><time datetime="2026-08-03">August 3, 2026</time><span class="post-meta-sep" aria-hidden="true">&middot;</span><span class="post-read-time">3 min read</span></div>
+          <p class="article-byline">By SpeedCheckPro team</p>
+        </header>
+
+        <p class="article-lede">A speed test hands you four numbers in a few seconds, and it is tempting to look only at the biggest one. The others often explain more about why a video call stutters or a game feels laggy than the headline download figure does.</p>
+
+        <div class="article-body">
+<h2>Units first: Mbps is not MB/s</h2>
+<p>Speed tests report megabits per second (Mbps). File downloads in your browser usually show megabytes per second (MB/s). There are eight bits in a byte, so divide the Mbps figure by eight to estimate the MB/s you can expect. A 100 Mbps connection tops out at roughly 12.5 MB/s, before any overhead.</p>
+
+<h2>Download</h2>
+<p>Download speed is how fast data arrives at your device. It matters for streaming video, loading web pages, downloading files and installing updates. Higher-resolution video needs more of it, and several people streaming at once add up. Streaming services publish their own recommended speeds, so check those if you want a concrete target for your household.</p>
+
+<h2>Upload</h2>
+<p>Upload speed is how fast your device can send data. It is often much lower than download, especially on cable and many DSL connections, while fibre plans are more often symmetrical. Upload matters for video calls, sending large files, backing up photos to the cloud and live streaming. If your camera freezes on calls while incoming video looks fine, upload is the first number to look at.</p>
+
+<h2>Ping (latency)</h2>
+<p>Ping is the time, in milliseconds, for a small packet to travel to the test server and back. Lower is better. It is mostly determined by physical distance and the number of network hops, so it is the number you notice most in online games, video calls and anything interactive. A connection with modest download speed and low ping can feel snappier than a fast one with high ping.</p>
+<p>Some tests also report latency <em>under load</em>, measured while the connection is busy downloading or uploading. A big jump compared with idle ping points to bufferbloat: queues in your router or modem filling up and delaying everything else. Routers with smart queue management (often labelled SQM or QoS) can reduce it.</p>
+
+<h2>Jitter</h2>
+<p>Jitter is how much ping varies from one packet to the next. If one packet takes 20 ms and the next takes 60 ms, audio and video have to buffer to smooth that out, or they glitch. Real-time applications care about consistency more than raw speed, so steady low jitter is often more important for calls and gaming than an extra few hundred megabits of download.</p>
+
+<h2>Packet loss</h2>
+<p>Some tests also show packet loss, the share of packets that never arrive. Even a small, sustained amount causes retransmissions, robotic audio and rubber-banding in games. Persistent loss on a wired connection is worth reporting to your provider.</p>
+
+<h2>Why results vary</h2>
+<p>Two tests a minute apart rarely give identical numbers. Common reasons:</p>
+<ul>
+  <li><strong>Wi-Fi.</strong> Distance from the router, walls, interference from neighbouring networks and the frequency band (2.4 GHz reaches further, 5 GHz and 6 GHz are faster at short range) all change results.</li>
+  <li><strong>Other traffic.</strong> Someone streaming, a console downloading an update or a cloud backup running in the background all compete for the same line.</li>
+  <li><strong>Time of day.</strong> Shared parts of the provider's network can get congested in the evening.</li>
+  <li><strong>Test server.</strong> A server further away adds latency and can limit throughput. Different test sites pick different servers.</li>
+  <li><strong>Your device.</strong> Older network adapters, power-saving modes, browser extensions and slower processors can cap what a single device can measure.</li>
+  <li><strong>VPNs.</strong> Encryption and the extra route to the VPN server usually lower speed and raise ping.</li>
+</ul>
+
+<h2>Comparing results with your plan</h2>
+<p>Most plans are sold as "up to" a certain speed, measured at the line rather than over Wi-Fi. To check whether you are getting what you pay for:</p>
+<ol>
+  <li>Connect a computer to the router with an Ethernet cable.</li>
+  <li>Pause other devices and background downloads.</li>
+  <li>Run several tests at different times of day and write down the results.</li>
+  <li>Compare the wired results with your plan, and the Wi-Fi results with the wired ones.</li>
+</ol>
+<p>If wired results are close to your plan but Wi-Fi is far lower, the bottleneck is inside your home. If wired results are consistently well below the plan, you have a clear, documented case to take to your provider.</p>
+        </div>
+
+        <aside class="article-callout" aria-label="Try it">
+          <h2>Try it</h2>
+          <p>Run the Speed Test a few times, once on Wi-Fi and once on a wired connection if you can, and note the ping and jitter alongside download and upload.</p>
+          <div class="callout-actions">
+          <a href="../speed.html" class="btn btn-primary">Run a speed test</a>
+          </div>
+        </aside>
+
+        <nav class="article-nav" aria-label="More articles">
+        <a class="article-nav-card" href="public-vs-private-ip-addresses-ipv4-vs-ipv6.html" rel="prev"><span class="article-nav-label">Previous article</span><span class="article-nav-title">Public vs private IP addresses, IPv4 vs IPv6, and what an IP lookup reveals</span></a>
+        <a class="article-nav-card article-nav-next" href="choosing-a-vpn-what-actually-matters.html" rel="next"><span class="article-nav-label">Next article</span><span class="article-nav-title">Choosing a VPN: what actually matters</span></a>
+        </nav>
+
+        <a href="../blog.html" class="back-link">Back to all articles</a>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <a href="../index.html" class="logo"><span class="logo-mark">SC</span>SpeedCheckPro</a>
+      <ul class="footer-links">
+        <li><a href="../blog.html">Blog</a></li>
+        <li><a href="../privacy.html">Privacy Policy</a></li>
+        <li><a href="../terms.html">Terms of Service</a></li>
+        <li><a href="../about.html">About Us</a></li>
+        <li><a href="../contact.html">Contact</a></li>
+        <li><a href="../dmca.html">DMCA</a></li>
+      </ul>
+      <p class="footer-copy">&copy; 2026 SpeedCheckPro. Free tools, privacy first.</p>
+    </div>
+  </footer>
+</body>
+</html>
