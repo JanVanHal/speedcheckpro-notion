@@ -21,10 +21,10 @@
         <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="primary-menu" onclick="var h=this.closest('.site-header'),o=h.classList.toggle('nav-open');this.setAttribute('aria-expanded',o);this.setAttribute('aria-label',o?'Close menu':'Open menu')"><span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>Menu</button>
         <ul class="nav-links" id="primary-menu">
           <li><a href="index.html" class="active">Home</a></li>
-          <li><a href="dns.html">DNS Checker</a></li>
-          <li><a href="ip.html">IP Address</a></li>
           <li><a href="speed.html">Speed Test</a></li>
           <li><a href="down.html">Is It Down?</a></li>
+          <li><a href="ip.html">IP Address</a></li>
+          <li><a href="dns.html">DNS Checker</a></li>
           <li><a href="blog.html">Blog</a></li>
           <li><a href="about.html">About</a></li>
           <li><a href="contact.html">Contact</a></li>
@@ -38,21 +38,6 @@
     <section class="section tools-top" aria-label="Tools">
       <div class="container">
         <div class="tools-grid">
-          <article class="tool-card">
-            <span class="tool-mark mark-sky" aria-hidden="true">DNS</span>
-            <span class="tool-tag">Resolver</span>
-            <h3>DNS Resolver</h3>
-            <p>Find DNS records for any domain. Check TTL, NS, and A records instantly.</p>
-            <a href="dns.html" class="btn btn-primary tool-btn">Try DNS Checker</a>
-          </article>
-
-          <article class="tool-card">
-            <span class="tool-mark mark-marigold" aria-hidden="true">IP</span>
-            <span class="tool-tag">Lookup</span>
-            <h3>IP Address Tool</h3>
-            <p>Get your public IP, geolocation, and ISP details. Handy for network troubleshooting.</p>
-            <a href="ip.html" class="btn btn-primary tool-btn">Check Your IP</a>
-          </article>
 
           <article class="tool-card">
             <span class="tool-mark mark-coral" aria-hidden="true">SPD</span>
@@ -68,6 +53,21 @@
             <p>Check if a website is up and how fast it answers, with a DNS check.</p>
             <a href="down.html" class="btn btn-primary tool-btn">Check a Website</a>
           </article>
+
+          <article class="tool-card">
+            <span class="tool-mark mark-marigold" aria-hidden="true">IP</span>
+            <span class="tool-tag">Lookup</span>
+            <h3>IP Address Tool</h3>
+            <p>Get your public IP, geolocation, and ISP details. Handy for network troubleshooting.</p>
+            <a href="ip.html" class="btn btn-primary tool-btn">Check Your IP</a>
+          </article>
+          <article class="tool-card">
+            <span class="tool-mark mark-sky" aria-hidden="true">DNS</span>
+            <span class="tool-tag">Resolver</span>
+            <h3>DNS Resolver</h3>
+            <p>Find DNS records for any domain. Check TTL, NS, and A records instantly.</p>
+            <a href="dns.html" class="btn btn-primary tool-btn">Try DNS Checker</a>
+          </article>
         </div>
       </div>
     </section>
@@ -76,7 +76,7 @@
         <div class="hero-inner">
           <span class="hero-pill">Free tools</span>
           <h1>Free Online Speed &amp; Network Tools</h1>
-          <p class="lede">Check DNS, your IP address, internet speed and whether a website is down. 100% free, no registration required.</p>
+          <p class="lede">Test your internet speed, check whether a website is down, and look up your IP address and DNS. 100% free, no registration required.</p>
         </div>
       </div>
     </section>
